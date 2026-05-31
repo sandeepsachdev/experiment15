@@ -35,6 +35,13 @@ public class TrendingService {
     private static final int TOP_N = 20;
     private static final int MAX_ARTICLES_PER_TOPIC = 8;
 
+    /**
+     * Multi-word feed boilerplate that should never surface as a trending topic, regardless
+     * of how often it appears. Compared case-insensitively against generated phrases.
+     */
+    private static final Set<String> BLOCKED_PHRASES = Set.of(
+            "latest news bulletin");
+
     private final ArticleCacheService cache;
     private final StopwordService stopwordService;
 
@@ -164,6 +171,10 @@ public class TrendingService {
                 }
 
                 String key = phrase.toString();
+                // Never surface known boilerplate phrases as topics.
+                if (BLOCKED_PHRASES.contains(key)) {
+                    continue;
+                }
                 double weight = fieldWeight * recencyWeight;
                 if (allProper && cap.isEnabled()) {
                     weight *= cap.getBoost();

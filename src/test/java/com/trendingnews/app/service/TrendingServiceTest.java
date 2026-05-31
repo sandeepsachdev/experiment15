@@ -144,4 +144,22 @@ class TrendingServiceTest {
         assertNotNull(find(r, "donald trump"));
         assertNull(find(r, "donald"), "single word 'donald' must be suppressed");
     }
+
+    @Test
+    void blockedBoilerplatePhraseNeverSurfaces() {
+        List<Article> corpus = List.of(
+                article("BBC", "Latest News Bulletin from around the world"),
+                article("BBC", "Latest News Bulletin evening edition"),
+                article("BBC", "Latest News Bulletin morning edition"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(3);
+        s.getStopwords().setEnabled(false); // ensure the words themselves aren't filtered out
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        assertNull(find(r, "latest news bulletin"),
+                "the boilerplate phrase 'latest news bulletin' must never surface");
+    }
 }

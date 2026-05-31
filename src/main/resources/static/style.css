@@ -185,6 +185,9 @@ button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid v
         overflow-y: visible;
     }
     .sidebar { position: static; }
+    /* Show the results first and the filter panel last when stacked. */
+    .results { order: 1; }
+    .sidebar { order: 2; }
 }
 
 /* Phones: stack the top bar so the title and status don't fight for width. */
