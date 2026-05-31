@@ -8,7 +8,8 @@ import java.util.List;
 /**
  * The curated set of worldwide RSS/Atom feeds the app polls.
  *
- * <p>Coverage: Australia (4), Americas (6), Europe (7) and Asia/Middle East (6).
+ * <p>Coverage: Australia (4), Americas (9, incl. 3 Canadian), Europe (10, incl. 6 British)
+ * and Asia/Middle East (6).
  * Individual feeds occasionally change URLs or go offline; the poller degrades gracefully
  * and simply skips any source it cannot fetch.
  */
@@ -29,6 +30,9 @@ public class NewsSourceRegistry {
             new NewsSource("Washington Post", "Americas", "https://feeds.washingtonpost.com/rss/world"),
             new NewsSource("Fox News", "Americas", "https://moxie.foxnews.com/google-publisher/latest.xml"),
             new NewsSource("USA Today", "Americas", "https://rssfeeds.usatoday.com/usatoday-NewsTopStories"),
+            new NewsSource("CBC News (CA)", "Americas", "https://www.cbc.ca/webfeed/rss/rss-topstories"),
+            new NewsSource("Global News (CA)", "Americas", "https://globalnews.ca/feed/"),
+            new NewsSource("CTV News (CA)", "Americas", "https://www.ctvnews.ca/rss/ctvnews-ca-top-stories-public-rss-1.822009"),
 
             // ---------------- Europe ----------------
             new NewsSource("BBC News", "Europe", "https://feeds.bbci.co.uk/news/rss.xml"),
@@ -38,6 +42,9 @@ public class NewsSourceRegistry {
             new NewsSource("Euronews", "Europe", "https://www.euronews.com/rss"),
             new NewsSource("The Independent", "Europe", "https://www.independent.co.uk/news/rss"),
             new NewsSource("Sky News", "Europe", "https://feeds.skynews.com/feeds/rss/world.xml"),
+            new NewsSource("The Telegraph (UK)", "Europe", "https://www.telegraph.co.uk/news/rss.xml"),
+            new NewsSource("Daily Mail (UK)", "Europe", "https://www.dailymail.co.uk/articles.rss"),
+            new NewsSource("Metro (UK)", "Europe", "https://metro.co.uk/feed/"),
 
             // ---------------- Asia / Middle East ----------------
             new NewsSource("Al Jazeera", "Asia", "https://www.aljazeera.com/xml/rss/all.xml"),
