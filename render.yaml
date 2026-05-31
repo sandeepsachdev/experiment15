@@ -1,0 +1,14 @@
+# Render Blueprint — deploy with "New +" -> "Blueprint" pointed at this repo,
+# or it is picked up automatically on a connected repo.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: trending-news
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/status
+    autoDeploy: true
+    envVars:
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=70"

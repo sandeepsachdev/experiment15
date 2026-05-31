@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>World Trending News — Topic Lab</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">📰</span>
+        <div>
+            <h1>World Trending News</h1>
+            <p class="tagline">Live RSS from across the globe — tune the pipeline, watch the topics shift.</p>
+        </div>
+    </div>
+    <div class="status" id="statusBar">
+        <span id="statusArticles">— articles</span>
+        <span id="statusSources">— sources</span>
+        <span id="statusUpdated">updated —</span>
+        <button id="refreshBtn" class="ghost-btn" title="Re-poll all feeds now">⟳ Re-poll</button>
+    </div>
+</header>
+
+<main class="layout">
+    <!-- ============ Filter controls ============ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-head">
+            <h2>Filter pipeline</h2>
+            <p class="hint">Toggle filters and drag the sliders. The <b>Preview</b> panel updates live; click
+                <b>Apply</b> to lock it in as the new snapshot.</p>
+        </div>
+
+        <div id="filterControls"><!-- filters injected by app.js --></div>
+
+        <div class="actions">
+            <button id="applyBtn" class="primary-btn" disabled>Apply preview ✓</button>
+            <button id="revertBtn" class="ghost-btn" disabled>Revert</button>
+            <button id="resetBtn" class="ghost-btn">Reset all</button>
+        </div>
+    </aside>
+
+    <!-- ============ Results ============ -->
+    <section class="results">
+        <div class="panels">
+            <!-- Snapshot (last applied) -->
+            <div class="panel snapshot">
+                <div class="panel-head">
+                    <h3>📌 Snapshot <span class="sub">last applied settings</span></h3>
+                    <span class="meta" id="snapshotMeta"></span>
+                </div>
+                <ol class="topics" id="snapshotTopics">
+                    <li class="empty">Apply a setting to capture a snapshot.</li>
+                </ol>
+            </div>
+
+            <!-- Preview (live, unapplied) -->
+            <div class="panel preview">
+                <div class="panel-head">
+                    <h3>🔬 Preview <span class="sub">live, not yet applied</span>
+                        <span class="dirty-badge" id="dirtyBadge" hidden>unapplied changes</span>
+                    </h3>
+                    <span class="meta" id="previewMeta"></span>
+                </div>
+                <ol class="topics" id="previewTopics">
+                    <li class="empty">Loading trending topics…</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="sources-strip" id="sourcesStrip"></div>
+    </section>
+</main>
+
+<!-- Article drill-down dialog -->
+<dialog id="articleDialog">
+    <div class="dialog-head">
+        <h3 id="dialogTitle">Articles</h3>
+        <button id="dialogClose" class="ghost-btn">✕</button>
+    </div>
+    <ul id="dialogArticles" class="article-list"></ul>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
