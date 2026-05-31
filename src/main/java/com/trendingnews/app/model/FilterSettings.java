@@ -44,6 +44,9 @@ public class FilterSettings {
     /** Show only multi-word topics, suppressing single-word ones. */
     private MultiWordOnlyFilter multiWordOnly = new MultiWordOnlyFilter();
 
+    /** Count each topic at most once per article (ignore repeat mentions within a story). */
+    private CountOncePerArticleFilter countOncePerArticle = new CountOncePerArticleFilter();
+
     /** Roll shorter phrases up into the longer phrases that contain them. */
     private PhraseRollupFilter phraseRollup = new PhraseRollupFilter();
 
@@ -148,6 +151,14 @@ public class FilterSettings {
 
     public void setMultiWordOnly(MultiWordOnlyFilter multiWordOnly) {
         this.multiWordOnly = multiWordOnly;
+    }
+
+    public CountOncePerArticleFilter getCountOncePerArticle() {
+        return countOncePerArticle;
+    }
+
+    public void setCountOncePerArticle(CountOncePerArticleFilter countOncePerArticle) {
+        this.countOncePerArticle = countOncePerArticle;
     }
 
     public PhraseRollupFilter getPhraseRollup() {
@@ -417,6 +428,19 @@ public class FilterSettings {
     }
 
     public static class MultiWordOnlyFilter {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    /** When enabled, a topic only adds to its score once per article (repeats ignored). */
+    public static class CountOncePerArticleFilter {
         private boolean enabled = true;
 
         public boolean isEnabled() {

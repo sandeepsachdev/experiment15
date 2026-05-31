@@ -196,6 +196,7 @@ public class TrendingService {
         int maxWords = (settings.getPhrase().isEnabled() || multiWordOnly)
                 ? Math.max(multiWordOnly ? 2 : 1, settings.getPhrase().getMaxWords()) : 1;
         int minWords = multiWordOnly ? 2 : 1;
+        boolean countOnce = settings.getCountOncePerArticle().isEnabled();
 
         for (int i = 0; i < accepted.size(); i++) {
             StringBuilder phrase = new StringBuilder();
@@ -226,16 +227,21 @@ public class TrendingService {
                 }
 
                 Accumulator acc = accumulators.computeIfAbsent(key, k -> new Accumulator());
-                // Count each phrase once per article for "mentions"/source breadth, but
-                // always add weight so repeated mentions still raise the score.
+                // "mentions"/source breadth always count an article once. By default the
+                // score also only counts a topic once per article; with the toggle off,
+                // repeated mentions within a story each add to the score.
                 boolean firstInArticle = seenInArticle.add(key);
-                acc.score += weight;
+                if (firstInArticle || !countOnce) {
+                    acc.score += weight;
+                }
                 if (firstInArticle) {
                     acc.mentions++;
                     acc.sources.add(article.getSourceName());
                     acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
-                }
-                if (allProper) {
+                    if (allProper) {
+                        acc.properMentions++;
+                    }
+                } else if (allProper && !countOnce) {
                     acc.properMentions++;
                 }
             }

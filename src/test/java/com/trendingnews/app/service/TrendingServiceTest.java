@@ -246,4 +246,32 @@ class TrendingServiceTest {
         // ...and unrelated articles are untouched.
         assertNotNull(find(r, "council"));
     }
+
+    @Test
+    void countOncePerArticleIgnoresRepeatMentions() {
+        // One article repeats "apple" three times; another mentions it once.
+        List<Article> corpus = List.of(
+                article("BBC", "apple apple apple"),
+                article("CNN", "apple news"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+
+        // With "count once per article" ON, each article contributes 1 → score 2.
+        s.getCountOncePerArticle().setEnabled(true);
+        TrendingTopic once = find(service.compute(s), "apple");
+        assertNotNull(once);
+        assertEquals(2.0, once.getScore(), 0.001, "each article should count apple once");
+        assertEquals(2, once.getMentions());
+
+        // With it OFF, the first article's three mentions all count → 3 + 1 = 4.
+        s.getCountOncePerArticle().setEnabled(false);
+        TrendingTopic repeated = find(service.compute(s), "apple");
+        assertNotNull(repeated);
+        assertEquals(4.0, repeated.getScore(), 0.001, "repeat mentions should each add when toggle is off");
+        assertEquals(2, repeated.getMentions(), "mentions still counts each article once");
+    }
 }

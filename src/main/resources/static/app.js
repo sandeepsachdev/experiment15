@@ -42,6 +42,11 @@ const FILTERS = [
         params: []
     },
     {
+        key: 'countOncePerArticle', label: 'Count once per article',
+        desc: 'A topic adds to its score only once per article, so repeats within one story don\'t inflate it.',
+        params: []
+    },
+    {
         key: 'phraseRollup', label: 'Roll up sub-phrases',
         desc: 'Count a shorter phrase toward the longer phrase that contains it (e.g. "trump" → "donald trump").',
         params: [{ kind: 'range', field: 'minContainerMentions', min: 1, max: 10, step: 1, label: 'Min mentions of longer phrase' }]
