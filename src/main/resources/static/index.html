@@ -25,19 +25,24 @@
 
 <main class="layout">
     <!-- ============ Filter controls ============ -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar section" id="sidebar">
         <div class="sidebar-head">
-            <h2>Filter pipeline</h2>
-            <p class="hint">Toggle filters and drag the sliders. The <b>Preview</b> panel updates live; click
-                <b>Apply</b> to lock it in as the new snapshot.</p>
+            <button class="collapse-btn" data-target="sidebar" aria-expanded="true" title="Hide/show this section">▾</button>
+            <div>
+                <h2>Filter pipeline</h2>
+                <p class="hint">Toggle filters and drag the sliders. The <b>Preview</b> panel updates live; click
+                    <b>Apply</b> to lock it in as the new snapshot.</p>
+            </div>
         </div>
 
-        <div id="filterControls"><!-- filters injected by app.js --></div>
+        <div class="section-body">
+            <div id="filterControls"><!-- filters injected by app.js --></div>
 
-        <div class="actions">
-            <button id="applyBtn" class="primary-btn" disabled>Apply preview ✓</button>
-            <button id="revertBtn" class="ghost-btn" disabled>Revert</button>
-            <button id="resetBtn" class="ghost-btn">Reset all</button>
+            <div class="actions">
+                <button id="applyBtn" class="primary-btn" disabled>Apply preview ✓</button>
+                <button id="revertBtn" class="ghost-btn" disabled>Revert</button>
+                <button id="resetBtn" class="ghost-btn">Reset all</button>
+            </div>
         </div>
     </aside>
 
@@ -45,27 +50,29 @@
     <section class="results">
         <div class="panels">
             <!-- Preview (live, unapplied) -->
-            <div class="panel preview">
+            <div class="panel preview section" id="previewPanel">
                 <div class="panel-head">
-                    <h3>🔬 Preview <span class="sub">live, not yet applied</span>
+                    <h3><button class="collapse-btn" data-target="previewPanel" aria-expanded="true" title="Hide/show this section">▾</button>
+                        🔬 Preview <span class="sub">live, not yet applied</span>
                         <span class="dirty-badge" id="dirtyBadge" hidden>unapplied changes</span>
                         <span class="updating-badge" id="previewUpdating" hidden>
                             <span class="spinner"></span>updating…</span>
                     </h3>
                     <span class="meta" id="previewMeta"></span>
                 </div>
-                <ol class="topics" id="previewTopics">
+                <ol class="topics section-body" id="previewTopics">
                     <li class="empty">Loading trending topics…</li>
                 </ol>
             </div>
 
             <!-- Snapshot (last applied) -->
-            <div class="panel snapshot">
+            <div class="panel snapshot section" id="snapshotPanel">
                 <div class="panel-head">
-                    <h3>📌 Snapshot <span class="sub">last applied settings</span></h3>
+                    <h3><button class="collapse-btn" data-target="snapshotPanel" aria-expanded="true" title="Hide/show this section">▾</button>
+                        📌 Snapshot <span class="sub">last applied settings</span></h3>
                     <span class="meta" id="snapshotMeta"></span>
                 </div>
-                <ol class="topics" id="snapshotTopics">
+                <ol class="topics section-body" id="snapshotTopics">
                     <li class="empty">Apply a setting to capture a snapshot.</li>
                 </ol>
             </div>

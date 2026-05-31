@@ -455,6 +455,16 @@ function bindGlobalButtons() {
     $('articleDialog').addEventListener('click', (e) => {
         if (e.target.id === 'articleDialog') $('articleDialog').close();
     });
+
+    // Collapse / expand each section via its chevron button.
+    document.querySelectorAll('.collapse-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const section = document.getElementById(btn.dataset.target);
+            if (!section) return;
+            const collapsed = section.classList.toggle('collapsed');
+            btn.setAttribute('aria-expanded', String(!collapsed));
+        });
+    });
 }
 
 async function saveStopwordsAsDefault() {

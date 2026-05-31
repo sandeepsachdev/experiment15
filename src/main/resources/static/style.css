@@ -82,6 +82,30 @@ body {
 .sidebar-head h2 { margin: 0 0 6px; font-size: 16px; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 14px; }
 
+/* Collapsible sections: a chevron button hides/shows each section's body. */
+.sidebar-head { display: flex; align-items: flex-start; gap: 10px; }
+.collapse-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 6px;
+    flex: 0 0 auto;
+    transition: transform 0.15s, color 0.15s;
+}
+.collapse-btn:hover { color: var(--text); background: var(--panel-2); }
+/* Rotate the chevron to point right when the section is collapsed. */
+.section.collapsed > .sidebar-head .collapse-btn,
+.section.collapsed > .panel-head .collapse-btn,
+.collapse-btn[aria-expanded="false"] { transform: rotate(-90deg); }
+/* Hide the body (and, in the sidebar, the descriptive hint) when collapsed. */
+.section.collapsed .section-body { display: none; }
+.section.collapsed .hint { display: none; }
+.section.collapsed.sidebar { padding-bottom: 14px; }
+
 .filter {
     border: 1px solid var(--line);
     border-radius: 10px;
