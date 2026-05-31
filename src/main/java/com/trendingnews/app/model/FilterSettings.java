@@ -252,7 +252,7 @@ public class FilterSettings {
     }
 
     public static class PluralFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
 
         public boolean isEnabled() {
             return enabled;
@@ -264,7 +264,7 @@ public class FilterSettings {
     }
 
     public static class NounFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
         /** Tokens shorter than this are not considered nouns. */
         private int minLength = 4;
 
@@ -286,7 +286,7 @@ public class FilterSettings {
     }
 
     public static class CapitalisationFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
         /**
          * If true, only words that appear capitalised mid-sentence survive.
          * If false, such words are simply boosted by {@link #boost}.
@@ -351,7 +351,7 @@ public class FilterSettings {
     }
 
     public static class MinSourcesFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
         private int minSources = 2;
 
         public boolean isEnabled() {
@@ -527,7 +527,7 @@ public class FilterSettings {
     }
 
     public static class PhraseRollupFilter {
-        private boolean enabled = true;
+        private boolean enabled = false;
         /**
          * A shorter phrase is only rolled up into a longer one if that longer phrase was
          * itself mentioned in at least this many articles (guards against absorbing strong

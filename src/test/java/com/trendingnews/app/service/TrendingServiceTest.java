@@ -65,6 +65,12 @@ class TrendingServiceTest {
         // Merge-overlap is on by default; disable it so phrase-level assertions are unaffected.
         // The dedicated test enables it explicitly.
         s.getMergeOverlap().setEnabled(false);
+        // Noun detection, capitalisation and min-sources are on by default; disable them so the
+        // small test corpora aren't unexpectedly filtered/reweighted. Tests that care enable
+        // these explicitly.
+        s.getNoun().setEnabled(false);
+        s.getCapitalisation().setEnabled(false);
+        s.getMinSources().setEnabled(false);
         return s;
     }
 
