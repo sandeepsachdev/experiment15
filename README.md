@@ -8,7 +8,7 @@ previewing the effect of every change before committing it.
 
 ## What it does
 
-- **Polls 24 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
+- **Polls 25 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
   caching articles in memory:
   - **Australia (6):** ABC News, Sydney Morning Herald, The Age, The Guardian AU, SBS News, Brisbane Times
   - **Americas (6):** CNN, New York Times, NPR, Washington Post, Fox News, USA Today
@@ -110,3 +110,6 @@ The free plan works fine; the first poll completes within ~30 s of boot.
 - Feeds occasionally change URLs or rate-limit; the poller logs and skips any it can't
   fetch, so the app stays up even if a source is temporarily unavailable.
 - All article text is HTML-stripped (jsoup) before tokenisation.
+- **Restricted networks:** some sandboxes/proxies return HTTP 403 for publisher domains.
+  In that case the app still starts and serves the UI/API normally — it simply shows no
+  topics until it can reach the feeds. On Render (open egress) the feeds load within ~30 s.
