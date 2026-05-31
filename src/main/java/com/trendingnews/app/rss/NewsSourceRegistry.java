@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * The curated set of worldwide RSS/Atom feeds the app polls.
  *
- * <p>Coverage: Australia (6), Americas (6), Europe (7) and Asia/Middle East (6).
+ * <p>Coverage: Australia (4), Americas (6), Europe (7) and Asia/Middle East (6).
  * Individual feeds occasionally change URLs or go offline; the poller degrades gracefully
  * and simply skips any source it cannot fetch.
  */
@@ -19,10 +19,8 @@ public class NewsSourceRegistry {
             // ---------------- Australia ----------------
             new NewsSource("ABC News (AU)", "Australia", "https://www.abc.net.au/news/feed/2942460/rss.xml"),
             new NewsSource("Sydney Morning Herald", "Australia", "https://www.smh.com.au/rss/feed.xml"),
-            new NewsSource("The Age", "Australia", "https://www.theage.com.au/rss/feed.xml"),
             new NewsSource("The Guardian (AU)", "Australia", "https://www.theguardian.com/australia-news/rss"),
             new NewsSource("SBS News", "Australia", "https://www.sbs.com.au/news/feed"),
-            new NewsSource("Brisbane Times", "Australia", "https://www.brisbanetimes.com.au/rss/feed.xml"),
 
             // ---------------- Americas ----------------
             new NewsSource("CNN", "Americas", "http://rss.cnn.com/rss/cnn_topstories.rss"),

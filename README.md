@@ -8,9 +8,9 @@ previewing the effect of every change before committing it.
 
 ## What it does
 
-- **Polls 25 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
+- **Polls 23 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
   caching articles in memory:
-  - **Australia (6):** ABC News, Sydney Morning Herald, The Age, The Guardian AU, SBS News, Brisbane Times
+  - **Australia (4):** ABC News, Sydney Morning Herald, The Guardian AU, SBS News
   - **Americas (6):** CNN, New York Times, NPR, Washington Post, Fox News, USA Today
   - **Europe (7):** BBC News, The Guardian UK, Deutsche Welle, France 24, Euronews, The Independent, Sky News
   - **Asia / Middle East (6):** Al Jazeera, Times of India, The Japan Times, South China Morning Post, Channel NewsAsia, The Straits Times
