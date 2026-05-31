@@ -384,7 +384,7 @@ public class FilterSettings {
     }
 
     public static class MultiWordOnlyFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
 
         public boolean isEnabled() {
             return enabled;

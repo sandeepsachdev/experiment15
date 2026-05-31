@@ -53,6 +53,9 @@ class TrendingServiceTest {
         s.getRecency().setEnabled(false);
         s.getTitleWeight().setEnabled(false);
         s.getMinLength().setMinLength(3);
+        // Multi-word-only is on by default; turn it off here so the single-word assertions in
+        // most tests exercise the intended behaviour. The dedicated test enables it explicitly.
+        s.getMultiWordOnly().setEnabled(false);
         return s;
     }
 
