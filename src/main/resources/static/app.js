@@ -94,6 +94,11 @@ const FILTERS = [
         key: 'hideIranWar', label: 'Hide Iran war news',
         desc: 'Exclude articles about the Iran conflict (Iran + war/strike/missile, etc.).',
         params: []
+    },
+    {
+        key: 'hideMideastConflict', label: 'Hide Israel/Lebanon/Gaza conflict',
+        desc: 'Exclude articles about the Israel, Lebanon and Gaza conflicts (place + war terms).',
+        params: []
     }
 ];
 

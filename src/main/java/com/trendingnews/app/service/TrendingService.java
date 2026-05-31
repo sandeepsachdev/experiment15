@@ -66,7 +66,17 @@ public class TrendingService {
             "war", "strike", "strikes", "airstrike", "airstrikes", "missile", "missiles",
             "attack", "attacks", "conflict", "military", "nuclear", "ceasefire", "troops",
             "retaliation", "retaliatory", "bombing", "bombed", "escalation", "warfare",
-            "offensive", "drone", "drones", "idf", "israel", "israeli");
+            "offensive", "drone", "drones", "rocket", "rockets", "shelling", "invasion");
+
+    /**
+     * Lower-case place/actor terms that mark an article as Israel / Lebanon / Gaza coverage.
+     * Combined with {@link #WAR_TERMS} (see {@link #isMideastConflictArticle}) so general
+     * stories about these places (economy, culture) are not dropped — only conflict ones.
+     */
+    private static final Set<String> MIDEAST_TERMS = Set.of(
+            "israel", "israeli", "gaza", "gazan", "lebanon", "lebanese", "hamas",
+            "hezbollah", "idf", "west bank", "palestinian", "palestine", "beirut",
+            "tel aviv", "netanyahu");
 
     private final ArticleCacheService cache;
     private final StopwordService stopwordService;
@@ -99,6 +109,9 @@ public class TrendingService {
             }
             if (settings.getHideIranWar().isEnabled() && isIranWarArticle(article)) {
                 continue; // excluded by the "hide Iran war news" filter
+            }
+            if (settings.getHideMideastConflict().isEnabled() && isMideastConflictArticle(article)) {
+                continue; // excluded by the "hide Israel/Lebanon/Gaza conflict" filter
             }
             considered++;
             if (article.getRegion() != null) {
@@ -390,6 +403,16 @@ public class TrendingService {
     private boolean isIranWarArticle(Article article) {
         String text = (article.getTitle() + " " + article.getDescription()).toLowerCase();
         return containsAnyKeyword(text, IRAN_TERMS) && containsAnyKeyword(text, WAR_TERMS);
+    }
+
+    /**
+     * True when the article looks like Israel/Lebanon/Gaza conflict coverage: it must
+     * reference one of those places/actors AND contain a conflict/war term, so general
+     * stories about them (economy, culture) survive while conflict coverage is dropped.
+     */
+    private boolean isMideastConflictArticle(Article article) {
+        String text = (article.getTitle() + " " + article.getDescription()).toLowerCase();
+        return containsAnyKeyword(text, MIDEAST_TERMS) && containsAnyKeyword(text, WAR_TERMS);
     }
 
     /**

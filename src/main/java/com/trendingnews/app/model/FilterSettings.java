@@ -53,6 +53,9 @@ public class FilterSettings {
     /** Exclude Iran-war / Iran-conflict articles from the corpus entirely. */
     private HideIranWarFilter hideIranWar = new HideIranWarFilter();
 
+    /** Exclude Israel / Lebanon / Gaza conflict articles from the corpus entirely. */
+    private HideMideastConflictFilter hideMideastConflict = new HideMideastConflictFilter();
+
     public static FilterSettings withDefaults() {
         return new FilterSettings();
     }
@@ -169,6 +172,14 @@ public class FilterSettings {
 
     public void setHideIranWar(HideIranWarFilter hideIranWar) {
         this.hideIranWar = hideIranWar;
+    }
+
+    public HideMideastConflictFilter getHideMideastConflict() {
+        return hideMideastConflict;
+    }
+
+    public void setHideMideastConflict(HideMideastConflictFilter hideMideastConflict) {
+        this.hideMideastConflict = hideMideastConflict;
     }
 
     // ===== nested filter configs =====
@@ -432,6 +443,19 @@ public class FilterSettings {
 
     /** Excludes Iran-war / Iran-conflict articles from the corpus when enabled. */
     public static class HideIranWarFilter {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    /** Excludes Israel / Lebanon / Gaza conflict articles from the corpus when enabled. */
+    public static class HideMideastConflictFilter {
         private boolean enabled = true;
 
         public boolean isEnabled() {

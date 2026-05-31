@@ -57,10 +57,11 @@ class TrendingServiceTest {
         // Multi-word-only is on by default; turn it off here so the single-word assertions in
         // most tests exercise the intended behaviour. The dedicated test enables it explicitly.
         s.getMultiWordOnly().setEnabled(false);
-        // Hide-sports and hide-Iran-war are on by default; disable them here so test corpora
-        // aren't unexpectedly filtered. The dedicated tests enable them explicitly.
+        // Hide-sports, hide-Iran-war and hide-mideast-conflict are on by default; disable them
+        // here so test corpora aren't unexpectedly filtered. Dedicated tests enable them.
         s.getHideSports().setEnabled(false);
         s.getHideIranWar().setEnabled(false);
+        s.getHideMideastConflict().setEnabled(false);
         return s;
     }
 
@@ -216,6 +217,32 @@ class TrendingServiceTest {
         assertNull(find(r, "missile"), "Iran war article should be excluded");
         // ...but a general Iran article (no war terms) survives...
         assertNotNull(find(r, "festival"), "non-war Iran article should remain");
+        // ...and unrelated articles are untouched.
+        assertNotNull(find(r, "council"));
+    }
+
+    @Test
+    void hideMideastConflictExcludesOnlyConflictArticles() {
+        List<Article> corpus = List.of(
+                article("BBC", "Israel airstrike on Gaza kills dozens"),
+                article("CNN", "Hezbollah rockets strike northern Lebanon"),
+                article("NPR", "Israel unveils new tech startup festival"),
+                article("AP", "Local council approves budget"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+        s.getHideMideastConflict().setEnabled(true);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+        TrendingResult r = service.compute(s);
+
+        // The two conflict articles (place + war terms) are dropped, leaving 2 considered...
+        assertEquals(2, r.getArticlesConsidered(), "Israel/Gaza and Lebanon conflict articles excluded");
+        assertNull(find(r, "airstrike"));
+        assertNull(find(r, "rockets"));
+        // ...a general Israel article (no war terms) survives...
+        assertNotNull(find(r, "startup"), "non-conflict Israel article should remain");
         // ...and unrelated articles are untouched.
         assertNotNull(find(r, "council"));
     }
