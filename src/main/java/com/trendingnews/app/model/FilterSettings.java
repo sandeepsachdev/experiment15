@@ -186,7 +186,7 @@ public class FilterSettings {
     }
 
     public static class PluralFilter {
-        private boolean enabled = true;
+        private boolean enabled = false;
 
         public boolean isEnabled() {
             return enabled;
