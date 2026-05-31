@@ -308,7 +308,7 @@ public class FilterSettings {
     public static class RecencyFilter {
         private boolean enabled = true;
         /** Articles older than this many hours are dropped entirely. */
-        private int maxAgeHours = 48;
+        private int maxAgeHours = 24;
         /**
          * Half-life of the recency boost in hours (0 = age ignored for scoring, cutoff only;
          * smaller = newer articles count for much more).
