@@ -158,3 +158,50 @@ The free plan works fine; the first poll completes within ~30 s of boot.
 - **Restricted networks:** some sandboxes/proxies return HTTP 403 for publisher domains.
   In that case the app still starts and serves the UI/API normally — it simply shows no
   topics until it can reach the feeds. On Render (open egress) the feeds load within ~30 s.
+
+## Prompt history
+
+This project was built iteratively through the following prompts, in order:
+
+1. Create a spring boot web app which polls news rss sources from around the world to show
+   trending topics. There should be at least 5 sources from australia, 5 from america and
+   then several from europe and some from asia. The app should show the top 10 trending
+   topics and the topics should be clickable to show the articles the word came from. The
+   app should allow the user to experience using different settings for tweaking the
+   results. Each filter can be turned on and off and will have parameters that can be
+   adjusted. The app should show a preview of the effect of adjusting a filter before it is
+   applied permanently and then a snapshot of the results should be shown for previous
+   filter settings. There should be some sort of filter to remove common words such as
+   "a, the" etc and update this word list. Also create some filters that might prove useful
+   using noun detection, ignoring punctuation and plurals, and how much extra weighting to
+   give to title words vs content words, number of sources, recentness of articles and
+   filters that use capitalisation to detect nouns. The app should contain a dockerfile and
+   be easily deployable to render.
+2. Alter the filter panel to be scrollable.
+3. Switch the position of the snapshot and preview panels.
+4. Incorporate multiple word trending topics and a filter that can be turned on and off to
+   allow multiple word topics that are subsets of each other to be counted towards the
+   longer word topics.
+5. The scrollable filter panel is not working. When scrolling the panels do not remain in
+   view.
+6. When applying the roll up sub-phrases filter it does not seem to apply straight away?
+7. It still takes a long time to update when updating filters and the user does not know
+   what is going on.
+8. Turn on roll up sub-phrases by default and can you speed up the time to update after a
+   filter change.
+9. Add a filter that enables only multiple word topics.
+10. When changes are made to the filter multiple requests queue up to the backend.
+11. The roll-up filter should only apply to phrases greater than 1 word.
+12. Remove the Brisbane Times and The Age as news sources.
+13. Make multi word topics only be selected by default.
+14. Set recency max age to 24 hours by default.
+15. Fix up formatting on mobile.
+16. Turn off collapse plurals by default.
+17. Don't include the phrase "latest news bulletin".
+18. On mobile show the filter tab last.
+19. How is the score calculated.
+20. Record information about score calculation in the readme.
+21. Create a filter that can be turned on and off to hide sporting news.
+22. Create a filter that can be used to turn off Iran war news.
+23. Provide a way of hiding and showing each section.
+24. Add all prompts to the readme.
