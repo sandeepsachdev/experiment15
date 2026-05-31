@@ -340,7 +340,10 @@ public class TrendingService {
             }
 
             if (bestContainer != null) {
-                accumulators.get(bestContainer).absorb(accumulators.get(shortKey));
+                // Union (not sum): the sub-phrase comes from the same stories as its
+                // container, so summing would multiply the shared coverage. absorbOverlap
+                // keeps the score and recomputes mentions from the distinct article set.
+                accumulators.get(bestContainer).absorbOverlap(accumulators.get(shortKey));
                 absorbed.add(shortKey);
             }
         }
@@ -619,20 +622,12 @@ public class TrendingService {
         final Set<String> sources = new HashSet<>();
         final Map<String, Article> articles = new LinkedHashMap<>();
 
-        /** Merge another phrase's tally into this one (used by phrase rollup). */
-        void absorb(Accumulator other) {
-            this.score += other.score;
-            this.mentions += other.mentions;
-            this.properMentions += other.properMentions;
-            this.sources.addAll(other.sources);
-            this.articles.putAll(other.articles);
-        }
-
         /**
-         * Merge a near-duplicate overlapping phrase (used by merge-overlap). Because the two
-         * phrases describe the same story, scores are NOT summed (that would double-count the
-         * shared coverage); the keeper's score is retained and articles/sources are unioned so
-         * mentions/source breadth reflect the combined, de-duplicated set.
+         * Merge another phrase's tally into this one by UNION (used by both phrase rollup and
+         * merge-overlap). Because the absorbed phrase comes from the same stories as the
+         * keeper, scores are NOT summed (that would double-count the shared coverage); the
+         * keeper's score is retained and articles/sources are unioned so mentions/source
+         * breadth reflect the combined, de-duplicated set.
          */
         void absorbOverlap(Accumulator other) {
             this.score = Math.max(this.score, other.score);

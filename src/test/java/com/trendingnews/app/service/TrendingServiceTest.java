@@ -122,6 +122,37 @@ class TrendingServiceTest {
     }
 
     @Test
+    void rollupUnionsScoresInsteadOfSumming() {
+        // Each article contains "donald trump" once; the only 3-word phrase is the same per
+        // article, so "donald trump" and "donald" come from the same stories.
+        List<Article> corpus = List.of(
+                article("CNN", "Donald Trump rally"),
+                article("BBC", "Donald Trump speech"),
+                article("NPR", "Donald Trump visit"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(2);
+        s.getMultiWordOnly().setEnabled(true); // focus on the "donald trump" phrase
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+
+        // Score the phrase with rollup OFF (its own coverage only).
+        s.getPhraseRollup().setEnabled(false);
+        double withoutRollup = find(service.compute(s), "donald trump").getScore();
+
+        // With rollup ON, "donald trump" absorbs the shorter sub-phrases from the SAME
+        // articles. Union semantics mean the score must NOT be inflated beyond its own value.
+        s.getPhraseRollup().setEnabled(true);
+        s.getPhraseRollup().setMinContainerMentions(2);
+        TrendingTopic merged = find(service.compute(s), "donald trump");
+        assertNotNull(merged);
+        assertEquals(withoutRollup, merged.getScore(), 0.001,
+                "rollup should union (keep score), not sum, for sub-phrases from the same stories");
+        assertEquals(3, merged.getMentions(), "mentions reflect the 3 distinct articles, not a sum");
+    }
+
+    @Test
     void rollupCanBeDisabled() {
         List<Article> corpus = List.of(
                 article("CNN", "Donald Trump rally"),
