@@ -31,7 +31,9 @@ public class StopwordService {
             "not", "no", "nor", "only", "own", "same", "such", "more", "most", "some",
             "what", "which", "who", "whom", "how", "why", "where", "all", "any", "both",
             "each", "few", "other", "new", "says", "said", "say", "get", "got", "one",
-            "two", "now", "may", "also", "us", "could", "would", "should", "amp", "via");
+            "two", "now", "may", "also", "us", "could", "would", "should", "amp", "via",
+            "read", "continue", "reading"
+    );
 
     private final Set<String> words = new CopyOnWriteArraySet<>();
 

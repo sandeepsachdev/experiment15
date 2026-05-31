@@ -31,7 +31,7 @@ import java.util.TreeMap;
 @Service
 public class TrendingService {
 
-    private static final int TOP_N = 10;
+    private static final int TOP_N = 20;
     private static final int MAX_ARTICLES_PER_TOPIC = 8;
 
     private final ArticleCacheService cache;
