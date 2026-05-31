@@ -62,6 +62,9 @@ class TrendingServiceTest {
         s.getHideSports().setEnabled(false);
         s.getHideIranWar().setEnabled(false);
         s.getHideMideastConflict().setEnabled(false);
+        // Merge-overlap is on by default; disable it so phrase-level assertions are unaffected.
+        // The dedicated test enables it explicitly.
+        s.getMergeOverlap().setEnabled(false);
         return s;
     }
 
@@ -273,5 +276,58 @@ class TrendingServiceTest {
         assertNotNull(repeated);
         assertEquals(4.0, repeated.getScore(), 0.001, "repeat mentions should each add when toggle is off");
         assertEquals(2, repeated.getMentions(), "mentions still counts each article once");
+    }
+
+    @Test
+    void numericFilterDropsNumberAndDateTokens() {
+        List<Article> corpus = List.of(
+                article("BBC", "freedom 250 declared on 31st"),
+                article("CNN", "bulletin 2026 update"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+        s.getNumeric().setEnabled(true);
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        assertNull(find(r, "250"), "pure number should be dropped");
+        assertNull(find(r, "31st"), "ordinal date should be dropped");
+        assertNull(find(r, "2026"), "year should be dropped");
+        // Real words survive.
+        assertNotNull(find(r, "freedom"));
+        assertNotNull(find(r, "bulletin"));
+
+        // With the filter off, the numbers come back.
+        s.getNumeric().setEnabled(false);
+        assertNotNull(find(new TrendingService(cacheOf(corpus), new StopwordService()).compute(s), "250"));
+    }
+
+    @Test
+    void mergeOverlapCombinesNearDuplicatePhrasesFromSameStory() {
+        // Three articles, each repeating the same overlapping headline windows.
+        List<Article> corpus = List.of(
+                article("BBC", "strike alleged drug boat kills three"),
+                article("CNN", "strike alleged drug boat kills three"),
+                article("NPR", "strike alleged drug boat kills three"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(3);
+        s.getMultiWordOnly().setEnabled(true);
+        s.getPhraseRollup().setEnabled(false); // isolate the merge-overlap behaviour
+        s.getMergeOverlap().setEnabled(true);
+        s.getMergeOverlap().setMinArticleOverlap(0.5);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+
+        int withMerge = service.compute(s).getTopics().size();
+        s.getMergeOverlap().setEnabled(false);
+        int withoutMerge = service.compute(s).getTopics().size();
+
+        // Merging collapses the overlapping windows, so fewer distinct topics survive.
+        assertTrue(withMerge < withoutMerge,
+                "merge-overlap should reduce the number of near-duplicate topics (" +
+                        withMerge + " vs " + withoutMerge + ")");
     }
 }

@@ -131,7 +131,8 @@ public class TrendingService {
                     article, settings, stopwords, accumulators, seenInArticle);
         }
 
-        Set<String> absorbed = applyPhraseRollup(accumulators, settings);
+        Set<String> absorbed = new HashSet<>(applyPhraseRollup(accumulators, settings));
+        absorbed.addAll(applyMergeOverlap(accumulators, absorbed, settings));
         List<TrendingTopic> topics = rank(accumulators, absorbed, settings);
 
         return new TrendingResult(
@@ -174,6 +175,10 @@ public class TrendingService {
             }
             // Stopwords.
             if (settings.getStopwords().isEnabled() && stopwords.contains(term)) {
+                continue;
+            }
+            // Pure-number / date tokens ("250", "31st", "2026").
+            if (settings.getNumeric().isEnabled() && isNumericToken(term)) {
                 continue;
             }
             // Noun heuristic.
@@ -342,6 +347,95 @@ public class TrendingService {
         return absorbed;
     }
 
+    /**
+     * Merges near-duplicate overlapping phrases that describe the same story. Two phrases are
+     * considered the same topic when they share at least one word AND their source-article
+     * sets overlap by at least the configured fraction (Jaccard). This collapses fragments
+     * like "alleged drug boat", "drug boat kills" and "strike alleged drug" — overlapping
+     * windows of one headline that phrase rollup misses because none is a contiguous subset
+     * of another.
+     *
+     * <p>Greedy and order-stable: the highest-scoring phrase becomes each cluster's keeper and
+     * absorbs the others (union of articles/sources, so the score reflects distinct coverage
+     * rather than the sum of overlapping fragments).
+     *
+     * @return the set of accumulator keys that were absorbed and must be skipped when ranking
+     */
+    private Set<String> applyMergeOverlap(Map<String, Accumulator> accumulators,
+                                          Set<String> alreadyAbsorbed, FilterSettings settings) {
+        FilterSettings.MergeOverlapFilter merge = settings.getMergeOverlap();
+        if (!merge.isEnabled()) {
+            return Set.of();
+        }
+        double minOverlap = merge.getMinArticleOverlap();
+
+        // Candidates: multi-word phrases still in play, highest score first (keepers win ties).
+        List<String> keys = new ArrayList<>();
+        for (String k : accumulators.keySet()) {
+            if (!alreadyAbsorbed.contains(k) && k.indexOf(' ') >= 0) {
+                keys.add(k);
+            }
+        }
+        keys.sort(Comparator.comparingDouble((String k) -> accumulators.get(k).score).reversed());
+
+        Map<String, Set<String>> wordSets = new HashMap<>();
+        for (String k : keys) {
+            wordSets.put(k, new HashSet<>(Arrays.asList(k.split(" "))));
+        }
+
+        Set<String> absorbed = new HashSet<>();
+        for (int i = 0; i < keys.size(); i++) {
+            String keeper = keys.get(i);
+            if (absorbed.contains(keeper)) {
+                continue;
+            }
+            Accumulator keeperAcc = accumulators.get(keeper);
+            for (int j = i + 1; j < keys.size(); j++) {
+                String other = keys.get(j);
+                if (absorbed.contains(other)) {
+                    continue;
+                }
+                // Must share at least one word.
+                if (!sharesWord(wordSets.get(keeper), wordSets.get(other))) {
+                    continue;
+                }
+                if (articleOverlap(keeperAcc.articles, accumulators.get(other).articles) >= minOverlap) {
+                    keeperAcc.absorbOverlap(accumulators.get(other));
+                    absorbed.add(other);
+                }
+            }
+        }
+        return absorbed;
+    }
+
+    private boolean sharesWord(Set<String> a, Set<String> b) {
+        Set<String> small = a.size() <= b.size() ? a : b;
+        Set<String> large = small == a ? b : a;
+        for (String w : small) {
+            if (large.contains(w)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Jaccard overlap of two articles maps keyed by link: |A∩B| / |A∪B|. */
+    private double articleOverlap(Map<String, Article> a, Map<String, Article> b) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return 0;
+        }
+        int inter = 0;
+        Map<String, Article> small = a.size() <= b.size() ? a : b;
+        Map<String, Article> large = small == a ? b : a;
+        for (String key : small.keySet()) {
+            if (large.containsKey(key)) {
+                inter++;
+            }
+        }
+        int union = a.size() + b.size() - inter;
+        return union == 0 ? 0 : (double) inter / union;
+    }
+
     private List<TrendingTopic> rank(Map<String, Accumulator> accumulators, Set<String> absorbed,
                                      FilterSettings settings) {
         FilterSettings.MinSourcesFilter minSources = settings.getMinSources();
@@ -419,6 +513,30 @@ public class TrendingService {
     private boolean isMideastConflictArticle(Article article) {
         String text = (article.getTitle() + " " + article.getDescription()).toLowerCase();
         return containsAnyKeyword(text, MIDEAST_TERMS) && containsAnyKeyword(text, WAR_TERMS);
+    }
+
+    /**
+     * True when a token is purely numeric or a number with an ordinal/date suffix, e.g.
+     * "250", "31st", "2026", "1990s", "10th". Such tokens are noise as standalone topics.
+     */
+    private boolean isNumericToken(String term) {
+        int digits = 0;
+        for (int i = 0; i < term.length(); i++) {
+            char c = term.charAt(i);
+            if (Character.isDigit(c)) {
+                digits++;
+            } else if (Character.isLetter(c)) {
+                // Allow only trailing ordinal/decade suffixes after the digits.
+                String rest = term.substring(i);
+                if (digits > 0 && (rest.equals("st") || rest.equals("nd") || rest.equals("rd")
+                        || rest.equals("th") || rest.equals("s"))) {
+                    return true;
+                }
+                return false;
+            }
+            // punctuation inside (e.g. commas) is ignored for this test
+        }
+        return digits > 0;
     }
 
     /**
@@ -508,6 +626,20 @@ public class TrendingService {
             this.properMentions += other.properMentions;
             this.sources.addAll(other.sources);
             this.articles.putAll(other.articles);
+        }
+
+        /**
+         * Merge a near-duplicate overlapping phrase (used by merge-overlap). Because the two
+         * phrases describe the same story, scores are NOT summed (that would double-count the
+         * shared coverage); the keeper's score is retained and articles/sources are unioned so
+         * mentions/source breadth reflect the combined, de-duplicated set.
+         */
+        void absorbOverlap(Accumulator other) {
+            this.score = Math.max(this.score, other.score);
+            this.properMentions = Math.max(this.properMentions, other.properMentions);
+            this.sources.addAll(other.sources);
+            this.articles.putAll(other.articles);
+            this.mentions = this.articles.size();
         }
     }
 }

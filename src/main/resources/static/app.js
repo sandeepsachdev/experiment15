@@ -52,9 +52,19 @@ const FILTERS = [
         params: [{ kind: 'range', field: 'minContainerMentions', min: 1, max: 10, step: 1, label: 'Min mentions of longer phrase' }]
     },
     {
+        key: 'mergeOverlap', label: 'Merge overlapping phrases',
+        desc: 'Combine near-duplicate phrases from the same story (e.g. "drug boat kills" + "alleged drug boat") into one topic.',
+        params: [{ kind: 'range', field: 'minArticleOverlap', min: 0.1, max: 1, step: 0.05, label: 'Min shared-article overlap' }]
+    },
+    {
         key: 'minLength', label: 'Minimum word length',
         desc: 'Discard very short tokens.',
         params: [{ kind: 'range', field: 'minLength', min: 1, max: 8, step: 1, label: 'Min characters' }]
+    },
+    {
+        key: 'numeric', label: 'Hide number/date tokens',
+        desc: 'Drop pure numbers and dates as topics ("250", "31st", "2026").',
+        params: []
     },
     {
         key: 'noun', label: 'Noun detection (suffix)',

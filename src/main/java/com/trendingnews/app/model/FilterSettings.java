@@ -38,6 +38,9 @@ public class FilterSettings {
     /** Drop very short tokens regardless of other filters. */
     private MinLengthFilter minLength = new MinLengthFilter();
 
+    /** Drop pure-number / date tokens ("250", "31st", "2026"). */
+    private NumericFilter numeric = new NumericFilter();
+
     /** Surface multi-word (n-gram) topics in addition to single words. */
     private PhraseFilter phrase = new PhraseFilter();
 
@@ -49,6 +52,9 @@ public class FilterSettings {
 
     /** Roll shorter phrases up into the longer phrases that contain them. */
     private PhraseRollupFilter phraseRollup = new PhraseRollupFilter();
+
+    /** Merge near-duplicate overlapping phrases from the same story into one topic. */
+    private MergeOverlapFilter mergeOverlap = new MergeOverlapFilter();
 
     /** Exclude sport articles from the corpus entirely. */
     private HideSportsFilter hideSports = new HideSportsFilter();
@@ -137,6 +143,14 @@ public class FilterSettings {
         this.minLength = minLength;
     }
 
+    public NumericFilter getNumeric() {
+        return numeric;
+    }
+
+    public void setNumeric(NumericFilter numeric) {
+        this.numeric = numeric;
+    }
+
     public PhraseFilter getPhrase() {
         return phrase;
     }
@@ -167,6 +181,14 @@ public class FilterSettings {
 
     public void setPhraseRollup(PhraseRollupFilter phraseRollup) {
         this.phraseRollup = phraseRollup;
+    }
+
+    public MergeOverlapFilter getMergeOverlap() {
+        return mergeOverlap;
+    }
+
+    public void setMergeOverlap(MergeOverlapFilter mergeOverlap) {
+        this.mergeOverlap = mergeOverlap;
     }
 
     public HideSportsFilter getHideSports() {
@@ -405,6 +427,19 @@ public class FilterSettings {
         }
     }
 
+    /** Drops pure-number / date tokens such as "250", "31st", "2026". */
+    public static class NumericFilter {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
     public static class PhraseFilter {
         private boolean enabled = true;
         /** Longest phrase (in words) to generate. 1 = single words only. */
@@ -514,6 +549,35 @@ public class FilterSettings {
 
         public void setMinContainerMentions(int minContainerMentions) {
             this.minContainerMentions = minContainerMentions;
+        }
+    }
+
+    /**
+     * Merges near-duplicate overlapping phrases that come from the same story (e.g. "alleged
+     * drug boat", "drug boat kills", "strike alleged drug") into a single topic.
+     */
+    public static class MergeOverlapFilter {
+        private boolean enabled = true;
+        /**
+         * Two phrases are merged when they share at least this fraction of their source
+         * articles AND share at least one word. 0.5 = half the articles overlap.
+         */
+        private double minArticleOverlap = 0.5;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public double getMinArticleOverlap() {
+            return minArticleOverlap;
+        }
+
+        public void setMinArticleOverlap(double minArticleOverlap) {
+            this.minArticleOverlap = minArticleOverlap;
         }
     }
 }
