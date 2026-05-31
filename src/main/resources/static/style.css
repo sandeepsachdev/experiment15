@@ -20,7 +20,15 @@ html, body {
     background: radial-gradient(1200px 600px at 70% -10%, #1c2740 0%, var(--bg) 55%);
     color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    min-height: 100vh;
+}
+
+/* Pin the app to the viewport so the columns scroll independently rather than the page. */
+html, body { height: 100%; }
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* ---------- top bar ---------- */
@@ -32,8 +40,7 @@ html, body {
     border-bottom: 1px solid var(--line);
     background: rgba(15, 20, 32, 0.7);
     backdrop-filter: blur(8px);
-    position: sticky;
-    top: 0;
+    flex: 0 0 auto;
     z-index: 10;
 }
 .brand { display: flex; align-items: center; gap: 14px; }
@@ -47,14 +54,16 @@ html, body {
 .layout {
     display: grid;
     grid-template-columns: 360px 1fr;
+    /* A single row pinned to the available height so the columns get a definite height
+       to scroll within (without this the row defaults to content height and overflows). */
+    grid-template-rows: minmax(0, 1fr);
     gap: 22px;
     padding: 22px;
-    align-items: start;
-}
-@media (max-width: 960px) {
-    .layout { grid-template-columns: 1fr; }
-    /* Stacked layout: the sidebar is no longer sticky, so let it grow naturally. */
-    .sidebar { position: static; max-height: none; overflow-y: visible; top: auto; }
+    /* Fill the space under the top bar; columns stretch to this height and scroll inside. */
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: stretch;
+    overflow: hidden;
 }
 
 /* ---------- sidebar ---------- */
@@ -63,9 +72,12 @@ html, body {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 18px;
-    position: sticky;
-    top: 86px;
     box-shadow: var(--shadow);
+    /* Scroll the filter list within its own column; the results column stays put. */
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .sidebar-head h2 { margin: 0 0 6px; font-size: 16px; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 14px; }
@@ -146,9 +158,30 @@ button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid v
 .actions { display: flex; gap: 8px; margin-top: 16px; }
 
 /* ---------- results ---------- */
-.results { min-width: 0; }
+.results {
+    min-width: 0;
+    /* Scroll the results within their own column so they stay in view independently. */
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 700px) { .panels { grid-template-columns: 1fr; } }
+
+/* Narrow screens: stack into one column and let the whole page scroll normally. */
+@media (max-width: 960px) {
+    body { height: auto; overflow: visible; }
+    .layout {
+        grid-template-columns: 1fr;
+        overflow: visible;
+        min-height: 0;
+    }
+    .sidebar, .results {
+        max-height: none;
+        overflow-y: visible;
+    }
+}
 
 .panel {
     background: var(--bg-soft);
