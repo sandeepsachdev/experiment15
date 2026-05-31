@@ -88,6 +88,8 @@ let appliedResult = null;
 let previewSettings = null;
 let previewResult = null;
 let previewTimer = null;
+let previewInFlight = null; // promise for the current /api/trending fetch, or null
+let previewDirty = false;   // true when previewSettings changed but the panel hasn't refetched
 
 const $ = (id) => document.getElementById(id);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -238,24 +240,43 @@ function fmt(v) {
 function onSettingsChanged() {
     markDirty(true);
     clearTimeout(previewTimer);
+    // Track that the on-screen preview no longer matches previewSettings.
+    previewDirty = true;
     previewTimer = setTimeout(runPreview, 280); // debounce slider drags
 }
 
-async function runPreview() {
-    try {
-        previewResult = await fetchJson('/api/trending', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(previewSettings)
-        });
-        renderTopics('previewTopics', previewResult, appliedResult);
-        renderMeta('previewMeta', previewResult);
-    } catch (e) {
-        $('previewTopics').innerHTML = `<li class="empty">Preview failed: ${e.message}</li>`;
-    }
+// Re-query the backend for the current previewSettings. Returns the promise so
+// callers (e.g. Apply) can await the freshest result before acting on it. Concurrent
+// calls share a single in-flight request so the latest settings always win.
+function runPreview() {
+    clearTimeout(previewTimer);
+    const settingsAtRequest = JSON.stringify(previewSettings);
+    previewInFlight = (async () => {
+        try {
+            const result = await fetchJson('/api/trending', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: settingsAtRequest
+            });
+            previewResult = result;
+            previewDirty = false;
+            renderTopics('previewTopics', previewResult, appliedResult);
+            renderMeta('previewMeta', previewResult);
+        } catch (e) {
+            $('previewTopics').innerHTML = `<li class="empty">Preview failed: ${e.message}</li>`;
+        }
+    })();
+    return previewInFlight;
 }
 
-function commitPreview() {
+// Apply the previewed settings to the Snapshot panel. Crucially, if a debounced or
+// in-flight preview fetch is still pending (e.g. the user toggled a filter and clicked
+// Apply within the debounce window), wait for the freshest result first so the snapshot
+// reflects the change rather than the previous state.
+async function commitPreview() {
+    if (previewDirty || previewInFlight) {
+        await runPreview();
+    }
     appliedSettings = clone(previewSettings);
     appliedResult = previewResult;
     renderTopics('snapshotTopics', appliedResult, null);
