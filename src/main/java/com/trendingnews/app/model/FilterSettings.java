@@ -41,6 +41,9 @@ public class FilterSettings {
     /** Surface multi-word (n-gram) topics in addition to single words. */
     private PhraseFilter phrase = new PhraseFilter();
 
+    /** Show only multi-word topics, suppressing single-word ones. */
+    private MultiWordOnlyFilter multiWordOnly = new MultiWordOnlyFilter();
+
     /** Roll shorter phrases up into the longer phrases that contain them. */
     private PhraseRollupFilter phraseRollup = new PhraseRollupFilter();
 
@@ -128,6 +131,14 @@ public class FilterSettings {
 
     public void setPhrase(PhraseFilter phrase) {
         this.phrase = phrase;
+    }
+
+    public MultiWordOnlyFilter getMultiWordOnly() {
+        return multiWordOnly;
+    }
+
+    public void setMultiWordOnly(MultiWordOnlyFilter multiWordOnly) {
+        this.multiWordOnly = multiWordOnly;
     }
 
     public PhraseRollupFilter getPhraseRollup() {
@@ -372,8 +383,20 @@ public class FilterSettings {
         }
     }
 
-    public static class PhraseRollupFilter {
+    public static class MultiWordOnlyFilter {
         private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class PhraseRollupFilter {
+        private boolean enabled = true;
         /**
          * A shorter phrase is only rolled up into a longer one if that longer phrase was
          * itself mentioned in at least this many articles (guards against absorbing strong

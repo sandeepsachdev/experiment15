@@ -37,6 +37,11 @@ const FILTERS = [
         params: [{ kind: 'range', field: 'maxWords', min: 1, max: 5, step: 1, label: 'Max words per topic' }]
     },
     {
+        key: 'multiWordOnly', label: 'Multi-word topics only',
+        desc: 'Show only phrases of 2+ words, hiding all single-word topics.',
+        params: []
+    },
+    {
         key: 'phraseRollup', label: 'Roll up sub-phrases',
         desc: 'Count a shorter phrase toward the longer phrase that contains it (e.g. "trump" → "donald trump").',
         params: [{ kind: 'range', field: 'minContainerMentions', min: 1, max: 10, step: 1, label: 'Min mentions of longer phrase' }]
@@ -89,6 +94,7 @@ let previewSettings = null;
 let previewResult = null;
 let previewTimer = null;
 let previewInFlight = null; // promise for the current /api/trending fetch, or null
+let previewRerunQueued = false; // a newer recompute was requested while one was in flight
 let previewDirty = false;   // true when previewSettings changed but the panel hasn't refetched
 
 const $ = (id) => document.getElementById(id);
@@ -255,30 +261,47 @@ function setUpdating(on) {
     if (list) list.classList.toggle('updating', on);
 }
 
-// Re-query the backend for the current previewSettings. Returns the promise so
-// callers (e.g. Apply) can await the freshest result before acting on it. Concurrent
-// calls share a single in-flight request so the latest settings always win.
+// Re-query the backend for the current previewSettings.
+//
+// Single-flight: only one request is ever in flight. If a recompute is requested while one
+// is running, we don't fire a parallel request — we just mark that another run is needed and
+// the in-flight call re-runs once when it finishes (always with the latest settings). This
+// prevents a queue of requests building up as the user drags sliders or toggles filters.
+// Returns a promise that resolves once the preview reflects the current settings, so callers
+// like Apply can await the freshest result.
 function runPreview() {
     clearTimeout(previewTimer);
-    const settingsAtRequest = JSON.stringify(previewSettings);
     setUpdating(true);
+
+    // Already running: coalesce this request into the current one.
+    if (previewInFlight) {
+        previewRerunQueued = true;
+        return previewInFlight;
+    }
+
     previewInFlight = (async () => {
-        try {
-            const result = await fetchJson('/api/trending', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: settingsAtRequest
-            });
-            previewResult = result;
-            previewDirty = false;
-            renderTopics('previewTopics', previewResult, appliedResult);
-            renderMeta('previewMeta', previewResult);
-        } catch (e) {
-            $('previewTopics').innerHTML = `<li class="empty">Preview failed: ${e.message}</li>`;
-        } finally {
-            setUpdating(false);
-        }
-    })();
+        // Keep fetching until the settings sent match the latest settings (no rerun queued).
+        do {
+            previewRerunQueued = false;
+            const body = JSON.stringify(previewSettings);
+            try {
+                const result = await fetchJson('/api/trending', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body
+                });
+                previewResult = result;
+                previewDirty = false;
+                renderTopics('previewTopics', previewResult, appliedResult);
+                renderMeta('previewMeta', previewResult);
+            } catch (e) {
+                $('previewTopics').innerHTML = `<li class="empty">Preview failed: ${e.message}</li>`;
+            }
+        } while (previewRerunQueued);
+    })().finally(() => {
+        previewInFlight = null;
+        setUpdating(false);
+    });
     return previewInFlight;
 }
 

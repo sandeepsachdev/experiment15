@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -136,10 +137,13 @@ public class TrendingService {
             accepted.add(new AcceptedToken(term, proper));
         }
 
-        // Second pass: emit single words and, when the phrase filter is on, contiguous
-        // multi-word n-grams up to the configured length.
-        int maxWords = settings.getPhrase().isEnabled()
-                ? Math.max(1, settings.getPhrase().getMaxWords()) : 1;
+        // Second pass: emit contiguous n-grams. The phrase filter sets the longest n-gram;
+        // the "multi-word only" filter suppresses single-word (1-gram) topics. When multi-word
+        // only is on we always generate phrases (otherwise nothing would be produced).
+        boolean multiWordOnly = settings.getMultiWordOnly().isEnabled();
+        int maxWords = (settings.getPhrase().isEnabled() || multiWordOnly)
+                ? Math.max(multiWordOnly ? 2 : 1, settings.getPhrase().getMaxWords()) : 1;
+        int minWords = multiWordOnly ? 2 : 1;
 
         for (int i = 0; i < accepted.size(); i++) {
             StringBuilder phrase = new StringBuilder();
@@ -152,6 +156,12 @@ public class TrendingService {
                 }
                 phrase.append(at.term);
                 allProper = allProper && at.proper;
+
+                // Skip emitting topics shorter than the minimum (e.g. single words when
+                // "multi-word only" is enabled).
+                if (n + 1 < minWords) {
+                    continue;
+                }
 
                 String key = phrase.toString();
                 double weight = fieldWeight * recencyWeight;
@@ -194,10 +204,28 @@ public class TrendingService {
             return Set.of();
         }
 
-        // Pre-split every phrase into its words once.
+        int minMentions = rollup.getMinContainerMentions();
+
+        // Pre-split every phrase into its words once, and build an inverted index from each
+        // word to the multi-word phrases that contain it. A phrase can only be a container for
+        // a shorter phrase if it shares the shorter phrase's first word, so the index lets us
+        // consider just those candidates instead of scanning the whole map (O(n^2) -> ~linear).
         Map<String, String[]> words = new HashMap<>();
+        Map<String, List<String>> wordToPhrases = new HashMap<>();
         for (String key : accumulators.keySet()) {
-            words.put(key, key.split(" "));
+            String[] w = key.split(" ");
+            words.put(key, w);
+            if (w.length < 2) {
+                continue; // single words are never containers
+            }
+            // Only index phrases that are eligible containers (enough mentions).
+            if (accumulators.get(key).mentions < minMentions) {
+                continue;
+            }
+            Set<String> distinct = new HashSet<>(Arrays.asList(w));
+            for (String token : distinct) {
+                wordToPhrases.computeIfAbsent(token, k -> new ArrayList<>()).add(key);
+            }
         }
 
         // Shortest phrases first so a word can flow through an intermediate phrase up to the
@@ -211,12 +239,19 @@ public class TrendingService {
                 continue;
             }
             String[] shortWords = words.get(shortKey);
+            // Only roll up multi-word phrases; single words are kept as their own topics.
+            if (shortWords.length < 2) {
+                continue;
+            }
+            List<String> candidates = wordToPhrases.get(shortWords[0]);
+            if (candidates == null) {
+                continue; // no longer phrase shares this phrase's first word
+            }
             String bestContainer = null;
             int bestLen = shortWords.length;
             double bestScore = -1;
 
-            for (Map.Entry<String, Accumulator> e : accumulators.entrySet()) {
-                String longKey = e.getKey();
+            for (String longKey : candidates) {
                 if (longKey.equals(shortKey) || absorbed.contains(longKey)) {
                     continue;
                 }
@@ -224,18 +259,16 @@ public class TrendingService {
                 if (longWords.length <= shortWords.length) {
                     continue;
                 }
-                if (e.getValue().mentions < rollup.getMinContainerMentions()) {
-                    continue;
-                }
                 if (!TextProcessor.containsContiguous(longWords, shortWords)) {
                     continue;
                 }
                 // Prefer the longest container; break ties by score.
+                double longScore = accumulators.get(longKey).score;
                 if (longWords.length > bestLen
-                        || (longWords.length == bestLen && e.getValue().score > bestScore)) {
+                        || (longWords.length == bestLen && longScore > bestScore)) {
                     bestContainer = longKey;
                     bestLen = longWords.length;
-                    bestScore = e.getValue().score;
+                    bestScore = longScore;
                 }
             }
 

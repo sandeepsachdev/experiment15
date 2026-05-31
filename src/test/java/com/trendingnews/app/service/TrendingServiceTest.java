@@ -78,11 +78,11 @@ class TrendingServiceTest {
     }
 
     @Test
-    void rollupAbsorbsSubPhrasesIntoLongerOnes() {
+    void rollupAbsorbsShorterPhrasesIntoLongerOnesButLeavesSingleWords() {
         List<Article> corpus = List.of(
-                article("CNN", "Donald Trump rally"),
-                article("BBC", "Donald Trump economy"),
-                article("NPR", "Donald Trump campaign"));
+                article("CNN", "President Donald Trump rally"),
+                article("BBC", "President Donald Trump economy"),
+                article("NPR", "President Donald Trump campaign"));
 
         FilterSettings s = baseSettings();
         s.getPhrase().setEnabled(true);
@@ -91,12 +91,16 @@ class TrendingServiceTest {
         s.getPhraseRollup().setMinContainerMentions(2);
 
         TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
-        TrendingTopic phrase = find(service.compute(s), "donald trump");
+        TrendingResult r = service.compute(s);
 
-        assertNotNull(phrase, "the longer phrase should survive rollup");
-        // With rollup on, the standalone 'donald' and 'trump' are absorbed into 'donald trump'.
-        assertNull(find(service.compute(s), "donald"));
-        assertNull(find(service.compute(s), "trump"));
+        // The 2-word phrase "donald trump" is a subset of "president donald trump" and is
+        // rolled up into it.
+        assertNotNull(find(r, "president donald trump"), "the longest phrase should survive");
+        assertNull(find(r, "donald trump"), "the 2-word sub-phrase should be absorbed");
+
+        // Single words are NOT rolled up — they remain as their own topics.
+        assertNotNull(find(r, "donald"), "single word 'donald' must be kept");
+        assertNotNull(find(r, "trump"), "single word 'trump' must be kept");
     }
 
     @Test
@@ -113,5 +117,28 @@ class TrendingServiceTest {
         // Both the words and the phrase coexist when rollup is off.
         assertNotNull(find(r, "donald"));
         assertNotNull(find(r, "donald trump"));
+    }
+
+    @Test
+    void multiWordOnlySuppressesSingleWordTopics() {
+        List<Article> corpus = List.of(
+                article("CNN", "Donald Trump rally"),
+                article("BBC", "Donald Trump economy"),
+                article("NPR", "Donald Trump campaign"));
+
+        FilterSettings s = baseSettings();
+        s.getPhraseRollup().setEnabled(false); // keep single words around unless suppressed
+        s.getMultiWordOnly().setEnabled(true);
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        // Every surfaced topic must contain at least one space (2+ words).
+        assertTrue(r.getTopics().size() > 0, "expected some multi-word topics");
+        for (TrendingTopic t : r.getTopics()) {
+            assertTrue(t.getTerm().contains(" "),
+                    "multi-word-only must hide single words, but found: " + t.getTerm());
+        }
+        assertNotNull(find(r, "donald trump"));
+        assertNull(find(r, "donald"), "single word 'donald' must be suppressed");
     }
 }
