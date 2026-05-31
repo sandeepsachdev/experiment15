@@ -240,9 +240,19 @@ function fmt(v) {
 function onSettingsChanged() {
     markDirty(true);
     clearTimeout(previewTimer);
-    // Track that the on-screen preview no longer matches previewSettings.
+    // Track that the on-screen preview no longer matches previewSettings, and give the
+    // user immediate feedback that an update is coming (before the debounce fires).
     previewDirty = true;
-    previewTimer = setTimeout(runPreview, 280); // debounce slider drags
+    setUpdating(true);
+    previewTimer = setTimeout(runPreview, 150); // debounce slider drags
+}
+
+// Toggle the "updating…" badge and dim the preview list while a recompute is pending.
+function setUpdating(on) {
+    const badge = $('previewUpdating');
+    if (badge) badge.hidden = !on;
+    const list = $('previewTopics');
+    if (list) list.classList.toggle('updating', on);
 }
 
 // Re-query the backend for the current previewSettings. Returns the promise so
@@ -251,6 +261,7 @@ function onSettingsChanged() {
 function runPreview() {
     clearTimeout(previewTimer);
     const settingsAtRequest = JSON.stringify(previewSettings);
+    setUpdating(true);
     previewInFlight = (async () => {
         try {
             const result = await fetchJson('/api/trending', {
@@ -264,6 +275,8 @@ function runPreview() {
             renderMeta('previewMeta', previewResult);
         } catch (e) {
             $('previewTopics').innerHTML = `<li class="empty">Preview failed: ${e.message}</li>`;
+        } finally {
+            setUpdating(false);
         }
     })();
     return previewInFlight;
@@ -275,7 +288,12 @@ function runPreview() {
 // reflects the change rather than the previous state.
 async function commitPreview() {
     if (previewDirty || previewInFlight) {
+        const applyBtn = $('applyBtn');
+        const label = applyBtn.textContent;
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'Applying…';
         await runPreview();
+        applyBtn.textContent = label;
     }
     appliedSettings = clone(previewSettings);
     appliedResult = previewResult;

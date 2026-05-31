@@ -200,6 +200,24 @@ button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid v
     padding: 2px 7px; border-radius: 20px;
 }
 
+/* "updating…" indicator shown the instant a filter changes, until results arrive. */
+.updating-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(79, 140, 255, 0.18); color: var(--accent);
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+}
+.updating-badge[hidden] { display: none; }
+.spinner {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid rgba(79, 140, 255, 0.35);
+    border-top-color: var(--accent);
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Dim + fade the preview list while a recompute is pending so the change is obvious. */
+.topics.updating { opacity: 0.45; transition: opacity 0.12s; pointer-events: none; }
+
 .topics { list-style: none; margin: 0; padding: 0; counter-reset: rank; }
 .topics li.topic {
     counter-increment: rank;
