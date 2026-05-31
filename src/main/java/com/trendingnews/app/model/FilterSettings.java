@@ -419,7 +419,7 @@ public class FilterSettings {
 
     /** Excludes sport articles from the corpus when enabled. */
     public static class HideSportsFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
 
         public boolean isEnabled() {
             return enabled;
@@ -432,7 +432,7 @@ public class FilterSettings {
 
     /** Excludes Iran-war / Iran-conflict articles from the corpus when enabled. */
     public static class HideIranWarFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
 
         public boolean isEnabled() {
             return enabled;

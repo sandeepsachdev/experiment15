@@ -57,6 +57,10 @@ class TrendingServiceTest {
         // Multi-word-only is on by default; turn it off here so the single-word assertions in
         // most tests exercise the intended behaviour. The dedicated test enables it explicitly.
         s.getMultiWordOnly().setEnabled(false);
+        // Hide-sports and hide-Iran-war are on by default; disable them here so test corpora
+        // aren't unexpectedly filtered. The dedicated tests enable them explicitly.
+        s.getHideSports().setEnabled(false);
+        s.getHideIranWar().setEnabled(false);
         return s;
     }
 
