@@ -53,6 +53,8 @@ html, body {
 }
 @media (max-width: 960px) {
     .layout { grid-template-columns: 1fr; }
+    /* Stacked layout: the sidebar is no longer sticky, so let it grow naturally. */
+    .sidebar { position: static; max-height: none; overflow-y: visible; top: auto; }
 }
 
 /* ---------- sidebar ---------- */
