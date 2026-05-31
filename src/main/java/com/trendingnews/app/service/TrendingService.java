@@ -78,7 +78,8 @@ public class TrendingService {
                     article, settings, stopwords, accumulators, seenInArticle);
         }
 
-        List<TrendingTopic> topics = rank(accumulators, settings);
+        Set<String> absorbed = applyPhraseRollup(accumulators, settings);
+        List<TrendingTopic> topics = rank(accumulators, absorbed, settings);
 
         return new TrendingResult(
                 topics,
@@ -96,6 +97,9 @@ public class TrendingService {
         FilterSettings.NounFilter noun = settings.getNoun();
         FilterSettings.MinLengthFilter minLen = settings.getMinLength();
 
+        // First pass: normalise and filter each token, keeping the ones that survive (in
+        // order) so contiguous n-grams can be built from them.
+        List<AcceptedToken> accepted = new ArrayList<>();
         for (RawToken token : TextProcessor.tokenize(text)) {
             boolean proper = cap.isEnabled() && TextProcessor.isProperNounCandidate(token);
 
@@ -129,32 +133,130 @@ public class TrendingService {
                 }
             }
 
-            double weight = fieldWeight * recencyWeight;
-            if (proper && cap.isEnabled()) {
-                weight *= cap.getBoost();
-            }
+            accepted.add(new AcceptedToken(term, proper));
+        }
 
-            Accumulator acc = accumulators.computeIfAbsent(term, k -> new Accumulator());
-            // Count each article once per term for "mentions"/source breadth, but always add weight.
-            boolean firstInArticle = seenInArticle.add(term);
-            acc.score += weight;
-            if (firstInArticle) {
-                acc.mentions++;
-                acc.sources.add(article.getSourceName());
-                acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
-            }
-            if (proper) {
-                acc.properMentions++;
+        // Second pass: emit single words and, when the phrase filter is on, contiguous
+        // multi-word n-grams up to the configured length.
+        int maxWords = settings.getPhrase().isEnabled()
+                ? Math.max(1, settings.getPhrase().getMaxWords()) : 1;
+
+        for (int i = 0; i < accepted.size(); i++) {
+            StringBuilder phrase = new StringBuilder();
+            boolean allProper = true;
+            int limit = Math.min(maxWords, accepted.size() - i);
+            for (int n = 0; n < limit; n++) {
+                AcceptedToken at = accepted.get(i + n);
+                if (n > 0) {
+                    phrase.append(' ');
+                }
+                phrase.append(at.term);
+                allProper = allProper && at.proper;
+
+                String key = phrase.toString();
+                double weight = fieldWeight * recencyWeight;
+                if (allProper && cap.isEnabled()) {
+                    weight *= cap.getBoost();
+                }
+
+                Accumulator acc = accumulators.computeIfAbsent(key, k -> new Accumulator());
+                // Count each phrase once per article for "mentions"/source breadth, but
+                // always add weight so repeated mentions still raise the score.
+                boolean firstInArticle = seenInArticle.add(key);
+                acc.score += weight;
+                if (firstInArticle) {
+                    acc.mentions++;
+                    acc.sources.add(article.getSourceName());
+                    acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
+                }
+                if (allProper) {
+                    acc.properMentions++;
+                }
             }
         }
     }
 
-    private List<TrendingTopic> rank(Map<String, Accumulator> accumulators, FilterSettings settings) {
+    /**
+     * Rolls shorter phrases up into the longer phrases that contain them.
+     *
+     * <p>When the filter is enabled, each phrase is absorbed into the single best container
+     * — the longest (then highest-scoring) phrase that contains it as a contiguous run of
+     * words and that was itself mentioned often enough. The shorter phrase's score, mentions,
+     * sources and articles are merged into the container and the shorter phrase is dropped
+     * from the results. Processing shortest-first lets contributions chain up to the longest
+     * phrase without ever double-counting (each phrase moves into exactly one container).
+     *
+     * @return the set of accumulator keys that were absorbed and must be skipped when ranking
+     */
+    private Set<String> applyPhraseRollup(Map<String, Accumulator> accumulators, FilterSettings settings) {
+        FilterSettings.PhraseRollupFilter rollup = settings.getPhraseRollup();
+        if (!rollup.isEnabled()) {
+            return Set.of();
+        }
+
+        // Pre-split every phrase into its words once.
+        Map<String, String[]> words = new HashMap<>();
+        for (String key : accumulators.keySet()) {
+            words.put(key, key.split(" "));
+        }
+
+        // Shortest phrases first so a word can flow through an intermediate phrase up to the
+        // longest container.
+        List<String> byLength = new ArrayList<>(accumulators.keySet());
+        byLength.sort(Comparator.comparingInt(k -> words.get(k).length));
+
+        Set<String> absorbed = new HashSet<>();
+        for (String shortKey : byLength) {
+            if (absorbed.contains(shortKey)) {
+                continue;
+            }
+            String[] shortWords = words.get(shortKey);
+            String bestContainer = null;
+            int bestLen = shortWords.length;
+            double bestScore = -1;
+
+            for (Map.Entry<String, Accumulator> e : accumulators.entrySet()) {
+                String longKey = e.getKey();
+                if (longKey.equals(shortKey) || absorbed.contains(longKey)) {
+                    continue;
+                }
+                String[] longWords = words.get(longKey);
+                if (longWords.length <= shortWords.length) {
+                    continue;
+                }
+                if (e.getValue().mentions < rollup.getMinContainerMentions()) {
+                    continue;
+                }
+                if (!TextProcessor.containsContiguous(longWords, shortWords)) {
+                    continue;
+                }
+                // Prefer the longest container; break ties by score.
+                if (longWords.length > bestLen
+                        || (longWords.length == bestLen && e.getValue().score > bestScore)) {
+                    bestContainer = longKey;
+                    bestLen = longWords.length;
+                    bestScore = e.getValue().score;
+                }
+            }
+
+            if (bestContainer != null) {
+                accumulators.get(bestContainer).absorb(accumulators.get(shortKey));
+                absorbed.add(shortKey);
+            }
+        }
+        return absorbed;
+    }
+
+    private List<TrendingTopic> rank(Map<String, Accumulator> accumulators, Set<String> absorbed,
+                                     FilterSettings settings) {
         FilterSettings.MinSourcesFilter minSources = settings.getMinSources();
         FilterSettings.CapitalisationFilter cap = settings.getCapitalisation();
 
         List<Map.Entry<String, Accumulator>> entries = new ArrayList<>();
         for (Map.Entry<String, Accumulator> e : accumulators.entrySet()) {
+            if (absorbed.contains(e.getKey())) {
+                continue;
+            }
             Accumulator acc = e.getValue();
             if (minSources.isEnabled() && acc.sources.size() < minSources.getMinSources()) {
                 continue;
@@ -245,6 +347,10 @@ public class TrendingService {
         return Math.round(v * 100.0) / 100.0;
     }
 
+    /** A token that survived filtering, ready to be combined into n-grams. */
+    private record AcceptedToken(String term, boolean proper) {
+    }
+
     /** Mutable per-term tally used while scanning the corpus. */
     private static class Accumulator {
         double score;
@@ -252,5 +358,14 @@ public class TrendingService {
         int properMentions;
         final Set<String> sources = new HashSet<>();
         final Map<String, Article> articles = new LinkedHashMap<>();
+
+        /** Merge another phrase's tally into this one (used by phrase rollup). */
+        void absorb(Accumulator other) {
+            this.score += other.score;
+            this.mentions += other.mentions;
+            this.properMentions += other.properMentions;
+            this.sources.addAll(other.sources);
+            this.articles.putAll(other.articles);
+        }
     }
 }

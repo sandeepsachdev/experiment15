@@ -32,6 +32,16 @@ const FILTERS = [
         params: []
     },
     {
+        key: 'phrase', label: 'Multi-word topics',
+        desc: 'Surface phrases (n-grams), e.g. "donald trump", not just single words.',
+        params: [{ kind: 'range', field: 'maxWords', min: 1, max: 5, step: 1, label: 'Max words per topic' }]
+    },
+    {
+        key: 'phraseRollup', label: 'Roll up sub-phrases',
+        desc: 'Count a shorter phrase toward the longer phrase that contains it (e.g. "trump" → "donald trump").',
+        params: [{ kind: 'range', field: 'minContainerMentions', min: 1, max: 10, step: 1, label: 'Min mentions of longer phrase' }]
+    },
+    {
         key: 'minLength', label: 'Minimum word length',
         desc: 'Discard very short tokens.',
         params: [{ kind: 'range', field: 'minLength', min: 1, max: 8, step: 1, label: 'Min characters' }]

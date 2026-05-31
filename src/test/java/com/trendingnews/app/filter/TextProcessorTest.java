@@ -63,4 +63,19 @@ class TextProcessorTest {
         assertTrue(TextProcessor.looksLikeNoun("government")); // -ment noun
         assertTrue(TextProcessor.looksLikeNoun("bank"));       // plain noun, kept
     }
+
+    @Test
+    void containsContiguousDetectsSubPhrases() {
+        String[] longPhrase = {"former", "president", "donald", "trump"};
+        // contiguous runs are contained
+        assertTrue(TextProcessor.containsContiguous(longPhrase, new String[]{"donald", "trump"}));
+        assertTrue(TextProcessor.containsContiguous(longPhrase, new String[]{"trump"}));
+        assertTrue(TextProcessor.containsContiguous(longPhrase, new String[]{"former", "president"}));
+        // non-contiguous words are NOT a subset
+        assertFalse(TextProcessor.containsContiguous(longPhrase, new String[]{"former", "trump"}));
+        // a longer needle can't fit a shorter haystack
+        assertFalse(TextProcessor.containsContiguous(new String[]{"trump"}, longPhrase));
+        // empty needle is never a match
+        assertFalse(TextProcessor.containsContiguous(longPhrase, new String[]{}));
+    }
 }

@@ -38,6 +38,12 @@ public class FilterSettings {
     /** Drop very short tokens regardless of other filters. */
     private MinLengthFilter minLength = new MinLengthFilter();
 
+    /** Surface multi-word (n-gram) topics in addition to single words. */
+    private PhraseFilter phrase = new PhraseFilter();
+
+    /** Roll shorter phrases up into the longer phrases that contain them. */
+    private PhraseRollupFilter phraseRollup = new PhraseRollupFilter();
+
     public static FilterSettings withDefaults() {
         return new FilterSettings();
     }
@@ -114,6 +120,22 @@ public class FilterSettings {
 
     public void setMinLength(MinLengthFilter minLength) {
         this.minLength = minLength;
+    }
+
+    public PhraseFilter getPhrase() {
+        return phrase;
+    }
+
+    public void setPhrase(PhraseFilter phrase) {
+        this.phrase = phrase;
+    }
+
+    public PhraseRollupFilter getPhraseRollup() {
+        return phraseRollup;
+    }
+
+    public void setPhraseRollup(PhraseRollupFilter phraseRollup) {
+        this.phraseRollup = phraseRollup;
     }
 
     // ===== nested filter configs =====
@@ -325,6 +347,54 @@ public class FilterSettings {
 
         public void setMinLength(int minLength) {
             this.minLength = minLength;
+        }
+    }
+
+    public static class PhraseFilter {
+        private boolean enabled = true;
+        /** Longest phrase (in words) to generate. 1 = single words only. */
+        private int maxWords = 3;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getMaxWords() {
+            return maxWords;
+        }
+
+        public void setMaxWords(int maxWords) {
+            this.maxWords = maxWords;
+        }
+    }
+
+    public static class PhraseRollupFilter {
+        private boolean enabled = false;
+        /**
+         * A shorter phrase is only rolled up into a longer one if that longer phrase was
+         * itself mentioned in at least this many articles (guards against absorbing strong
+         * short topics into a longer phrase that barely appears).
+         */
+        private int minContainerMentions = 2;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getMinContainerMentions() {
+            return minContainerMentions;
+        }
+
+        public void setMinContainerMentions(int minContainerMentions) {
+            this.minContainerMentions = minContainerMentions;
         }
     }
 }

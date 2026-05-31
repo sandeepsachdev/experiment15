@@ -140,4 +140,29 @@ public final class TextProcessor {
     public static boolean isStopword(String word, Set<String> stopwords) {
         return stopwords.contains(word);
     }
+
+    /**
+     * True when {@code needle} appears as a contiguous run of words inside {@code haystack}.
+     * Used by the phrase-rollup filter to decide when a shorter phrase is a subset of a
+     * longer one (e.g. {@code ["donald","trump"]} is contained in
+     * {@code ["former","president","donald","trump"]}).
+     */
+    public static boolean containsContiguous(String[] haystack, String[] needle) {
+        if (needle.length == 0 || needle.length > haystack.length) {
+            return false;
+        }
+        for (int start = 0; start + needle.length <= haystack.length; start++) {
+            boolean match = true;
+            for (int j = 0; j < needle.length; j++) {
+                if (!haystack[start + j].equals(needle[j])) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
