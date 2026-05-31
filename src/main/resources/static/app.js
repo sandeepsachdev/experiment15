@@ -84,6 +84,16 @@ const FILTERS = [
             { kind: 'range', field: 'maxAgeHours', min: 1, max: 168, step: 1, label: 'Max age (hours)' },
             { kind: 'range', field: 'halfLifeHours', min: 0, max: 72, step: 1, label: 'Half-life (hours, 0 = no decay)' }
         ]
+    },
+    {
+        key: 'hideSports', label: 'Hide sporting news',
+        desc: 'Exclude articles about sport (football, cricket, the Olympics, etc.).',
+        params: []
+    },
+    {
+        key: 'hideIranWar', label: 'Hide Iran war news',
+        desc: 'Exclude articles about the Iran conflict (Iran + war/strike/missile, etc.).',
+        params: []
     }
 ];
 

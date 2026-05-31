@@ -42,6 +42,32 @@ public class TrendingService {
     private static final Set<String> BLOCKED_PHRASES = Set.of(
             "latest news bulletin");
 
+    /**
+     * Lower-case keywords that mark an article as sport. Matched as whole words against the
+     * title + description so the "hide sporting news" filter can drop those articles.
+     */
+    private static final Set<String> SPORT_KEYWORDS = Set.of(
+            "sport", "sports", "football", "soccer", "rugby", "cricket", "tennis", "golf",
+            "basketball", "baseball", "hockey", "nba", "nfl", "mlb", "nhl", "afl", "nrl",
+            "olympics", "olympic", "f1", "formula 1", "formula one", "grand prix", "motogp",
+            "premier league", "champions league", "la liga", "bundesliga", "serie a",
+            "world cup", "wimbledon", "match", "matches", "tournament", "tournaments",
+            "playoff", "playoffs", "fixture", "fixtures", "striker", "midfielder",
+            "goalkeeper", "touchdown", "wicket", "wickets", "batsman", "bowler",
+            "athletics", "marathon", "boxing", "ufc", "cycling", "swimming");
+
+    /**
+     * Lower-case keywords/phrases that mark an article as Iran-war / Iran-conflict coverage.
+     * A match requires an Iran reference together with a conflict term (see
+     * {@link #isIranWarArticle}).
+     */
+    private static final Set<String> IRAN_TERMS = Set.of("iran", "iranian", "tehran");
+    private static final Set<String> WAR_TERMS = Set.of(
+            "war", "strike", "strikes", "airstrike", "airstrikes", "missile", "missiles",
+            "attack", "attacks", "conflict", "military", "nuclear", "ceasefire", "troops",
+            "retaliation", "retaliatory", "bombing", "bombed", "escalation", "warfare",
+            "offensive", "drone", "drones", "idf", "israel", "israeli");
+
     private final ArticleCacheService cache;
     private final StopwordService stopwordService;
 
@@ -67,6 +93,12 @@ public class TrendingService {
             double recencyWeight = recencyWeight(article, settings, now);
             if (recencyWeight < 0) {
                 continue; // dropped by the recency cutoff
+            }
+            if (settings.getHideSports().isEnabled() && isSportArticle(article)) {
+                continue; // excluded by the "hide sporting news" filter
+            }
+            if (settings.getHideIranWar().isEnabled() && isIranWarArticle(article)) {
+                continue; // excluded by the "hide Iran war news" filter
             }
             considered++;
             if (article.getRegion() != null) {
@@ -343,6 +375,43 @@ public class TrendingService {
                     a.getPublishedAt() == null ? null : a.getPublishedAt().toString()));
         }
         return refs;
+    }
+
+    /** True when the article's title or description matches any sport keyword (whole word). */
+    private boolean isSportArticle(Article article) {
+        String text = (article.getTitle() + " " + article.getDescription()).toLowerCase();
+        return containsAnyKeyword(text, SPORT_KEYWORDS);
+    }
+
+    /**
+     * True when the article looks like Iran-war coverage: it must reference Iran AND contain
+     * at least one conflict/war term, so general Iran stories (e.g. culture, economy) survive.
+     */
+    private boolean isIranWarArticle(Article article) {
+        String text = (article.getTitle() + " " + article.getDescription()).toLowerCase();
+        return containsAnyKeyword(text, IRAN_TERMS) && containsAnyKeyword(text, WAR_TERMS);
+    }
+
+    /**
+     * Whole-word / phrase containment test: each keyword matches only on word boundaries so
+     * "sport" doesn't match "transport" and "war" doesn't match "warehouse".
+     */
+    private boolean containsAnyKeyword(String lowerText, Set<String> keywords) {
+        for (String kw : keywords) {
+            int from = 0;
+            int idx;
+            while ((idx = lowerText.indexOf(kw, from)) >= 0) {
+                boolean leftOk = idx == 0 || !Character.isLetterOrDigit(lowerText.charAt(idx - 1));
+                int end = idx + kw.length();
+                boolean rightOk = end >= lowerText.length()
+                        || !Character.isLetterOrDigit(lowerText.charAt(end));
+                if (leftOk && rightOk) {
+                    return true;
+                }
+                from = idx + 1;
+            }
+        }
+        return false;
     }
 
     /**

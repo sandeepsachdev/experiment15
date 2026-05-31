@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -161,5 +162,57 @@ class TrendingServiceTest {
 
         assertNull(find(r, "latest news bulletin"),
                 "the boilerplate phrase 'latest news bulletin' must never surface");
+    }
+
+    @Test
+    void hideSportsExcludesSportArticles() {
+        List<Article> corpus = List.of(
+                article("BBC", "Arsenal football title"),
+                article("CNN", "Election results overnight"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false); // single words only, so terms aren't crowded out of top-N
+        s.getHideSports().setEnabled(true);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+        TrendingResult r = service.compute(s);
+
+        // The sport article is dropped, so its words don't appear...
+        assertNull(find(r, "arsenal"), "sport article should be excluded");
+        assertNull(find(r, "football"));
+        // ...but the non-sport article still contributes.
+        assertNotNull(find(r, "election"), "non-sport article should remain");
+        assertEquals(1, r.getArticlesConsidered(), "only the non-sport article is considered");
+
+        // With the filter off, both articles are considered again.
+        s.getHideSports().setEnabled(false);
+        TrendingResult r2 = service.compute(s);
+        assertEquals(2, r2.getArticlesConsidered());
+        assertNotNull(find(r2, "arsenal"), "sport article should be back when the filter is off");
+    }
+
+    @Test
+    void hideIranWarExcludesOnlyIranConflictArticles() {
+        List<Article> corpus = List.of(
+                article("BBC", "Iran missile strike escalates conflict"),
+                article("CNN", "Iran unveils new cultural festival in Tehran"),
+                article("NPR", "Local council approves budget"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+        s.getHideIranWar().setEnabled(true);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+        TrendingResult r = service.compute(s);
+
+        // The Iran-war article is dropped (Iran + conflict terms), leaving 2 considered...
+        assertEquals(2, r.getArticlesConsidered(), "the Iran war article should be excluded");
+        assertNull(find(r, "missile"), "Iran war article should be excluded");
+        // ...but a general Iran article (no war terms) survives...
+        assertNotNull(find(r, "festival"), "non-war Iran article should remain");
+        // ...and unrelated articles are untouched.
+        assertNotNull(find(r, "council"));
     }
 }

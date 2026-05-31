@@ -47,6 +47,12 @@ public class FilterSettings {
     /** Roll shorter phrases up into the longer phrases that contain them. */
     private PhraseRollupFilter phraseRollup = new PhraseRollupFilter();
 
+    /** Exclude sport articles from the corpus entirely. */
+    private HideSportsFilter hideSports = new HideSportsFilter();
+
+    /** Exclude Iran-war / Iran-conflict articles from the corpus entirely. */
+    private HideIranWarFilter hideIranWar = new HideIranWarFilter();
+
     public static FilterSettings withDefaults() {
         return new FilterSettings();
     }
@@ -147,6 +153,22 @@ public class FilterSettings {
 
     public void setPhraseRollup(PhraseRollupFilter phraseRollup) {
         this.phraseRollup = phraseRollup;
+    }
+
+    public HideSportsFilter getHideSports() {
+        return hideSports;
+    }
+
+    public void setHideSports(HideSportsFilter hideSports) {
+        this.hideSports = hideSports;
+    }
+
+    public HideIranWarFilter getHideIranWar() {
+        return hideIranWar;
+    }
+
+    public void setHideIranWar(HideIranWarFilter hideIranWar) {
+        this.hideIranWar = hideIranWar;
     }
 
     // ===== nested filter configs =====
@@ -385,6 +407,32 @@ public class FilterSettings {
 
     public static class MultiWordOnlyFilter {
         private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    /** Excludes sport articles from the corpus when enabled. */
+    public static class HideSportsFilter {
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    /** Excludes Iran-war / Iran-conflict articles from the corpus when enabled. */
+    public static class HideIranWarFilter {
+        private boolean enabled = false;
 
         public boolean isEnabled() {
             return enabled;
