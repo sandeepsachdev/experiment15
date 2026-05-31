@@ -29,13 +29,58 @@ Each filter can be toggled independently and carries its own parameters:
 |---|---|---|
 | **Stopword removal** | Drops common low-signal words. The word list is **fully editable** and can be saved as the server default or reset. | editable word list |
 | **Ignore punctuation** | Strips punctuation so `covid,` and `covid` count together. | — |
-| **Collapse plurals** | Treats simple plurals as singular (`banks` → `bank`). | — |
+| **Collapse plurals** | Treats simple plurals as singular (`banks` → `bank`). *(off by default)* | — |
+| **Multi-word topics** | Surfaces phrases (n-grams), e.g. `donald trump`, not just single words. | max words per topic |
+| **Multi-word topics only** | Shows only phrases of 2+ words, hiding all single-word topics. *(on by default)* | — |
+| **Roll up sub-phrases** | Counts a shorter multi-word phrase toward the longer phrase that contains it (`donald trump` → `president donald trump`); single words are never rolled up. *(on by default)* | min mentions of longer phrase |
 | **Minimum word length** | Discards very short tokens. | min characters |
 | **Noun detection (suffix)** | Keeps words with noun-like endings, drops obvious adverbs/verbs. | min length to test |
 | **Capitalisation → proper nouns** | Uses **mid-sentence capitalisation** to detect proper nouns; can boost their score or keep *only* proper nouns. | require-proper toggle, score boost × |
 | **Title vs content weighting** | Gives headline words more pull than body words. | title weight, content weight |
 | **Minimum sources** | Only surfaces topics reported by several outlets. | distinct sources |
-| **Recency** | Favours fresh news (exponential half-life) and drops stale articles. | max age (h), half-life (h) |
+| **Recency** | Favours fresh news (exponential half-life) and drops stale articles. | max age (h, default 24), half-life (h) |
+
+## How the score is calculated
+
+Every topic's **score** is the sum, over each time it appears across the whole corpus, of a
+per-occurrence weight:
+
+```
+weight = fieldWeight × recencyWeight × capitalisationBoost
+score  = Σ weight   (over every occurrence, including repeats within one article)
+```
+
+Each factor (implemented in `TrendingService.processField` / `recencyWeight`):
+
+1. **`fieldWeight` — where the term appeared** (the *Title vs content weighting* filter):
+   - title → `titleWeight` (default **3.0**)
+   - description/body → `contentWeight` (default **1.0**)
+   - filter off → both `1.0`.
+
+2. **`recencyWeight` — how fresh the article is** (the *Recency* filter):
+   - disabled, or article has no date → `1.0`
+   - older than `maxAgeHours` (default **24h**) → the article is **dropped entirely**
+   - otherwise exponential half-life decay: `recencyWeight = 0.5 ^ (ageHours / halfLifeHours)`
+     (default half-life **12h**, so ~1.0 when brand new, ~0.5 at 12h, ~0.25 at 24h; a
+     half-life of 0 means "cutoff only, no decay").
+
+3. **`capitalisationBoost`** (the *Capitalisation → proper nouns* filter, optional): when an
+   occurrence looks like a proper noun (mid-sentence capitalised) the weight is multiplied by
+   `boost` (default **2.0**). For multi-word topics this only applies when *every* word in the
+   phrase is a proper-noun candidate.
+
+**Multi-word topics** are scored with the same formula applied to the whole phrase. When
+**Roll up sub-phrases** is on, an absorbed shorter phrase's score is **added** to its
+container's score (along with its mentions, sources and articles).
+
+The final score is rounded to two decimals and topics are ranked by descending score (top 20).
+
+> The **hits** (number of articles mentioning the topic) and **src** (distinct sources)
+> figures shown in the UI are plain counts for context — they are *not* part of the score.
+
+Worked example: a headline word in a brand-new article that reads as a proper noun scores
+`3.0 × ~1.0 × 2.0 ≈ 6.0` for that occurrence, whereas the same word buried in the body of a
+24-hour-old article scores `1.0 × ~0.25 × 1.0 ≈ 0.25`.
 
 ## Architecture
 
