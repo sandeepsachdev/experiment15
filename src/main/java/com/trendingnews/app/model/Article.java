@@ -12,15 +12,17 @@ public class Article {
     private final String link;
     private final String sourceName;
     private final String region;
+    private final String country;
     private final Instant publishedAt;
 
     public Article(String title, String description, String link,
-                   String sourceName, String region, Instant publishedAt) {
+                   String sourceName, String region, String country, Instant publishedAt) {
         this.title = title == null ? "" : title;
         this.description = description == null ? "" : description;
         this.link = link == null ? "" : link;
         this.sourceName = sourceName;
         this.region = region;
+        this.country = country;
         this.publishedAt = publishedAt;
     }
 
@@ -42,6 +44,10 @@ public class Article {
 
     public String getRegion() {
         return region;
+    }
+
+    public String getCountry() {
+        return country;
     }
 
     public Instant getPublishedAt() {

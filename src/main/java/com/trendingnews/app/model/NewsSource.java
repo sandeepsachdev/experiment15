@@ -7,11 +7,13 @@ public class NewsSource {
 
     private final String name;
     private final String region;
+    private final String country;
     private final String feedUrl;
 
-    public NewsSource(String name, String region, String feedUrl) {
+    public NewsSource(String name, String region, String country, String feedUrl) {
         this.name = name;
         this.region = region;
+        this.country = country;
         this.feedUrl = feedUrl;
     }
 
@@ -21,6 +23,10 @@ public class NewsSource {
 
     public String getRegion() {
         return region;
+    }
+
+    public String getCountry() {
+        return country;
     }
 
     public String getFeedUrl() {

@@ -93,6 +93,16 @@ const FILTERS = [
         params: [{ kind: 'range', field: 'minSources', min: 1, max: 10, step: 1, label: 'Distinct sources' }]
     },
     {
+        key: 'minCountries', label: 'Multiple countries',
+        desc: 'Only show topics carried by feeds from more than one country.',
+        params: [{ kind: 'range', field: 'minCountries', min: 1, max: 6, step: 1, label: 'Distinct countries' }]
+    },
+    {
+        key: 'region', label: 'Regions',
+        desc: 'Restrict to selected regions (none selected = all regions).',
+        params: [{ kind: 'regions', field: 'regions' }]
+    },
+    {
         key: 'recency', label: 'Recency',
         desc: 'Favour fresh news and drop stale articles.',
         params: [
@@ -126,6 +136,7 @@ let previewTimer = null;
 let previewInFlight = null; // promise for the current /api/trending fetch, or null
 let previewRerunQueued = false; // a newer recompute was requested while one was in flight
 let previewDirty = false;   // true when previewSettings changed but the panel hasn't refetched
+let ALL_REGIONS = ['Australia', 'Americas', 'Europe', 'Asia']; // overwritten from /api/sources
 
 const $ = (id) => document.getElementById(id);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -141,10 +152,11 @@ async function boot() {
     appliedSettings = clone(defaultSettings);
     previewSettings = clone(defaultSettings);
 
+    // Load sources first so the region list is known before the controls are built.
+    await loadSources();
     buildControls();
     bindGlobalButtons();
     await refreshStatus();
-    await loadSources();
 
     // First render: compute and apply immediately so both panels start populated.
     await runPreview();
@@ -252,6 +264,24 @@ function buildParam(filterKey, p) {
             $('saveStopwords').addEventListener('click', saveStopwordsAsDefault);
             $('resetStopwords').addEventListener('click', resetStopwords);
         }, 0);
+        return div;
+    }
+    if (p.kind === 'regions') {
+        const div = document.createElement('div');
+        div.className = 'param';
+        const selected = previewSettings.region.regions || [];
+        const boxes = ALL_REGIONS.map((r) => {
+            const checked = selected.includes(r) ? 'checked' : '';
+            return `<label class="region-check"><input type="checkbox" value="${r}" ${checked}/> ${r}</label>`;
+        }).join('');
+        div.innerHTML = `<label>Include regions</label><div class="region-checks">${boxes}</div>`;
+        div.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+            cb.addEventListener('change', () => {
+                const chosen = Array.from(div.querySelectorAll('input:checked')).map((c) => c.value);
+                previewSettings.region.regions = chosen;
+                onSettingsChanged();
+            });
+        });
         return div;
     }
     return document.createElement('div');
@@ -442,6 +472,7 @@ async function refreshStatus() {
 async function loadSources() {
     try {
         const s = await fetchJson('/api/sources');
+        ALL_REGIONS = Object.keys(s.byRegion);
         const strip = $('sourcesStrip');
         strip.innerHTML = `<span class="region-chip">📡 <b>${s.total}</b> feeds worldwide</span>`;
         Object.entries(s.byRegion).forEach(([region, names]) => {

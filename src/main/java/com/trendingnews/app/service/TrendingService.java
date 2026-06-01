@@ -93,6 +93,7 @@ public class TrendingService {
         }
         List<Article> all = cache.getArticles();
         Set<String> stopwords = resolveStopwords(settings);
+        Set<String> allowedRegions = resolveAllowedRegions(settings);
         Instant now = Instant.now();
 
         Map<String, Accumulator> accumulators = new HashMap<>();
@@ -103,6 +104,9 @@ public class TrendingService {
             double recencyWeight = recencyWeight(article, settings, now);
             if (recencyWeight < 0) {
                 continue; // dropped by the recency cutoff
+            }
+            if (allowedRegions != null && !allowedRegions.contains(article.getRegion())) {
+                continue; // excluded by the region filter
             }
             if (settings.getHideSports().isEnabled() && isSportArticle(article)) {
                 continue; // excluded by the "hide sporting news" filter
@@ -252,6 +256,9 @@ public class TrendingService {
                     if (firstInArticle) {
                         acc.mentions++;
                         acc.sources.add(article.getSourceName());
+                        if (article.getCountry() != null) {
+                            acc.countries.add(article.getCountry());
+                        }
                         acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
                         if (allProper) {
                             acc.properMentions++;
@@ -453,6 +460,7 @@ public class TrendingService {
     private List<TrendingTopic> rank(Map<String, Accumulator> accumulators, Set<String> absorbed,
                                      FilterSettings settings) {
         FilterSettings.MinSourcesFilter minSources = settings.getMinSources();
+        FilterSettings.MinCountriesFilter minCountries = settings.getMinCountries();
         FilterSettings.CapitalisationFilter cap = settings.getCapitalisation();
 
         List<Map.Entry<String, Accumulator>> entries = new ArrayList<>();
@@ -462,6 +470,9 @@ public class TrendingService {
             }
             Accumulator acc = e.getValue();
             if (minSources.isEnabled() && acc.sources.size() < minSources.getMinSources()) {
+                continue;
+            }
+            if (minCountries.isEnabled() && acc.countries.size() < minCountries.getMinCountries()) {
                 continue;
             }
             if (cap.isEnabled() && cap.isRequireCapitalised() && acc.properMentions == 0) {
@@ -600,6 +611,24 @@ public class TrendingService {
         return Math.pow(0.5, ageHours / recency.getHalfLifeHours());
     }
 
+    /**
+     * Returns the set of regions articles must belong to, or {@code null} when the region
+     * filter is off or no regions are selected (meaning "all regions").
+     */
+    private Set<String> resolveAllowedRegions(FilterSettings settings) {
+        FilterSettings.RegionFilter region = settings.getRegion();
+        if (!region.isEnabled() || region.getRegions() == null || region.getRegions().isEmpty()) {
+            return null;
+        }
+        Set<String> set = new HashSet<>();
+        for (String r : region.getRegions()) {
+            if (r != null && !r.isBlank()) {
+                set.add(r.trim());
+            }
+        }
+        return set.isEmpty() ? null : set;
+    }
+
     private Set<String> resolveStopwords(FilterSettings settings) {
         if (!settings.getStopwords().isEnabled()) {
             return Set.of();
@@ -631,6 +660,7 @@ public class TrendingService {
         int mentions;
         int properMentions;
         final Set<String> sources = new HashSet<>();
+        final Set<String> countries = new HashSet<>();
         final Map<String, Article> articles = new LinkedHashMap<>();
 
         /**
@@ -644,6 +674,7 @@ public class TrendingService {
             this.score = Math.max(this.score, other.score);
             this.properMentions = Math.max(this.properMentions, other.properMentions);
             this.sources.addAll(other.sources);
+            this.countries.addAll(other.countries);
             this.articles.putAll(other.articles);
             this.mentions = this.articles.size();
         }

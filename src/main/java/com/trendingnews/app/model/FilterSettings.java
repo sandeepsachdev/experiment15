@@ -32,6 +32,9 @@ public class FilterSettings {
     /** Require a topic to appear across a minimum number of distinct sources. */
     private MinSourcesFilter minSources = new MinSourcesFilter();
 
+    /** Require a topic to appear in feeds from a minimum number of distinct countries. */
+    private MinCountriesFilter minCountries = new MinCountriesFilter();
+
     /** Favour recent articles and optionally drop ones older than a cutoff. */
     private RecencyFilter recency = new RecencyFilter();
 
@@ -55,6 +58,9 @@ public class FilterSettings {
 
     /** Merge near-duplicate overlapping phrases from the same story into one topic. */
     private MergeOverlapFilter mergeOverlap = new MergeOverlapFilter();
+
+    /** Restrict the corpus to a chosen set of regions (empty/disabled = all regions). */
+    private RegionFilter region = new RegionFilter();
 
     /** Exclude sport articles from the corpus entirely. */
     private HideSportsFilter hideSports = new HideSportsFilter();
@@ -127,6 +133,14 @@ public class FilterSettings {
         this.minSources = minSources;
     }
 
+    public MinCountriesFilter getMinCountries() {
+        return minCountries;
+    }
+
+    public void setMinCountries(MinCountriesFilter minCountries) {
+        this.minCountries = minCountries;
+    }
+
     public RecencyFilter getRecency() {
         return recency;
     }
@@ -189,6 +203,14 @@ public class FilterSettings {
 
     public void setMergeOverlap(MergeOverlapFilter mergeOverlap) {
         this.mergeOverlap = mergeOverlap;
+    }
+
+    public RegionFilter getRegion() {
+        return region;
+    }
+
+    public void setRegion(RegionFilter region) {
+        this.region = region;
     }
 
     public HideSportsFilter getHideSports() {
@@ -368,6 +390,28 @@ public class FilterSettings {
 
         public void setMinSources(int minSources) {
             this.minSources = minSources;
+        }
+    }
+
+    /** Requires a topic to appear in feeds from at least {@code minCountries} countries. */
+    public static class MinCountriesFilter {
+        private boolean enabled = true;
+        private int minCountries = 2;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getMinCountries() {
+            return minCountries;
+        }
+
+        public void setMinCountries(int minCountries) {
+            this.minCountries = minCountries;
         }
     }
 
@@ -578,6 +622,32 @@ public class FilterSettings {
 
         public void setMinArticleOverlap(double minArticleOverlap) {
             this.minArticleOverlap = minArticleOverlap;
+        }
+    }
+
+    /**
+     * Restricts the corpus to a chosen set of regions. When disabled, or when {@code regions}
+     * is null/empty, all regions are included.
+     */
+    public static class RegionFilter {
+        private boolean enabled = false;
+        /** Region names to keep (e.g. "Australia", "Americas", "Europe", "Asia"). */
+        private List<String> regions;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public List<String> getRegions() {
+            return regions;
+        }
+
+        public void setRegions(List<String> regions) {
+            this.regions = regions;
         }
     }
 }

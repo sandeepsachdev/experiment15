@@ -79,7 +79,8 @@ public class RssFeedClient {
             published = date.toInstant();
         }
 
-        return new Article(title, description, entry.getLink(), source.getName(), source.getRegion(), published);
+        return new Article(title, description, entry.getLink(), source.getName(),
+                source.getRegion(), source.getCountry(), published);
     }
 
     /** Strip HTML markup and collapse whitespace. */

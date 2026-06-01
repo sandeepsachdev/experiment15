@@ -41,7 +41,14 @@ class TrendingServiceTest {
     }
 
     private static Article article(String source, String title) {
-        return new Article(title, "", "http://example.com/" + title.hashCode(), source, "Americas", Instant.now());
+        // Default country derives from the source name so single-source corpora map to one
+        // country (keeps the multi-country filter from filtering test data unexpectedly).
+        return article(source, title, "Americas", source);
+    }
+
+    private static Article article(String source, String title, String region, String country) {
+        return new Article(title, "", "http://example.com/" + title.hashCode(),
+                source, region, country, Instant.now());
     }
 
     private static TrendingTopic find(TrendingResult r, String term) {
@@ -71,6 +78,9 @@ class TrendingServiceTest {
         s.getNoun().setEnabled(false);
         s.getCapitalisation().setEnabled(false);
         s.getMinSources().setEnabled(false);
+        // Min-countries is on by default; disable it so small corpora aren't filtered. The
+        // dedicated test enables it explicitly.
+        s.getMinCountries().setEnabled(false);
         return s;
     }
 
@@ -392,5 +402,57 @@ class TrendingServiceTest {
         assertTrue(withMerge < withoutMerge,
                 "merge-overlap should reduce the number of near-duplicate topics (" +
                         withMerge + " vs " + withoutMerge + ")");
+    }
+
+    @Test
+    void minCountriesRequiresTopicAcrossMultipleCountries() {
+        // "trump" appears in 3 USA feeds; "ashes" only in 2 Australian feeds.
+        List<Article> corpus = List.of(
+                article("CNN", "trump speech", "Americas", "USA"),
+                article("NPR", "trump rally", "Americas", "USA"),
+                article("BBC", "trump visit", "Europe", "UK"),
+                article("ABC", "ashes cricket", "Australia", "Australia"),
+                article("SMH", "ashes cricket", "Australia", "Australia"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+        s.getMinCountries().setEnabled(true);
+        s.getMinCountries().setMinCountries(2);
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        // "trump" spans USA + UK (2 countries) → kept; "ashes" only Australia → dropped.
+        assertNotNull(find(r, "trump"), "topic across 2 countries should be kept");
+        assertNull(find(r, "ashes"), "single-country topic should be dropped");
+
+        // Raise the requirement to 3 countries → "trump" (2 countries) is now dropped too.
+        s.getMinCountries().setMinCountries(3);
+        assertNull(find(new TrendingService(cacheOf(corpus), new StopwordService()).compute(s), "trump"));
+    }
+
+    @Test
+    void regionFilterRestrictsToSelectedRegions() {
+        List<Article> corpus = List.of(
+                article("CNN", "election news", "Americas", "USA"),
+                article("BBC", "parliament news", "Europe", "UK"),
+                article("ABC", "outback news", "Australia", "Australia"));
+
+        FilterSettings s = baseSettings();
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPhrase().setEnabled(false);
+        s.getRegion().setEnabled(true);
+        s.getRegion().setRegions(List.of("Europe"));
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        assertEquals(1, r.getArticlesConsidered(), "only Europe articles are considered");
+        assertNotNull(find(r, "parliament"), "Europe topic should remain");
+        assertNull(find(r, "election"), "Americas topic should be excluded");
+        assertNull(find(r, "outback"), "Australia topic should be excluded");
+
+        // Disabling the filter (or selecting no regions) includes everything again.
+        s.getRegion().setEnabled(false);
+        assertEquals(3, new TrendingService(cacheOf(corpus), new StopwordService()).compute(s).getArticlesConsidered());
     }
 }
