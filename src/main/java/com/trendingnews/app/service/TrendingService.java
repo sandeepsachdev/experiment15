@@ -166,9 +166,9 @@ public class TrendingService {
         for (RawToken token : TextProcessor.tokenize(text)) {
             boolean proper = cap.isEnabled() && TextProcessor.isProperNounCandidate(token);
 
-            // Surface form shown to the user: the original word with its capitals, plural and
-            // punctuation, regardless of which filters normalise it for matching below.
-            String surface = token.raw();
+            // Surface form shown to the user: the original word with its capitals and plural
+            // preserved, but with punctuation stripped so the list stays clean.
+            String surface = TextProcessor.stripPunctuation(token.raw());
             String term = token.raw();
             if (settings.getPunctuation().isEnabled()) {
                 term = TextProcessor.stripPunctuation(term);
@@ -500,7 +500,7 @@ public class TrendingService {
         for (int i = 0; i < Math.min(limit, entries.size()); i++) {
             Map.Entry<String, Accumulator> e = entries.get(i);
             Accumulator acc = e.getValue();
-            // Display the most common original surface form (with capitals/plurals/punctuation),
+            // Display the most common original surface form (capitals/plurals, no punctuation),
             // falling back to the normalised key if none was recorded.
             topics.add(new TrendingTopic(
                     acc.bestDisplayForm(e.getKey()),
@@ -670,8 +670,8 @@ public class TrendingService {
      *
      * @param term    the normalised form used for matching/grouping (lower-cased, punctuation
      *                stripped, singularised — depending on which filters are on)
-     * @param surface the original form as it appeared in the article, preserving capitals,
-     *                plurals and punctuation for display
+     * @param surface the original form as it appeared in the article, preserving capitals and
+     *                plurals (but with punctuation stripped) for display
      */
     private record AcceptedToken(String term, String surface, boolean proper) {
     }
