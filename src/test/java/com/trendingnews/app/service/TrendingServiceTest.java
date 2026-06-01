@@ -75,6 +75,32 @@ class TrendingServiceTest {
     }
 
     @Test
+    void blockedWordsBreakPhraseContinuity() {
+        // "of"/"the" are stopwords, so phrases must NOT bridge across them: "president united"
+        // and "president united states" must not be fabricated from the removed "of the".
+        List<Article> corpus = List.of(
+                article("CNN", "President of the United States speaks"),
+                article("BBC", "President of the United States speaks"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(3);
+        s.getMultiWordOnly().setEnabled(false);
+        s.getPlural().setEnabled(false); // keep "states" intact for clear assertions
+        s.getStopwords().setEnabled(true); // remove "of"/"the"
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        // The valid within-segment phrase survives...
+        assertNotNull(find(r, "united states"), "'united states' is a real contiguous phrase");
+        // ...but phrases bridging the removed "of the" must not appear.
+        assertNull(find(r, "president united"), "must not bridge across removed stopwords");
+        assertNull(find(r, "president united states"), "must not bridge across removed stopwords");
+        // The word before the gap is still a valid single-word topic.
+        assertNotNull(find(r, "president"));
+    }
+
+    @Test
     void surfacesMultiWordTopics() {
         List<Article> corpus = List.of(
                 article("CNN", "Donald Trump rally draws crowds"),

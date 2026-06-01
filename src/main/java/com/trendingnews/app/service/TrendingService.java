@@ -151,9 +151,12 @@ public class TrendingService {
         FilterSettings.NounFilter noun = settings.getNoun();
         FilterSettings.MinLengthFilter minLen = settings.getMinLength();
 
-        // First pass: normalise and filter each token, keeping the ones that survive (in
-        // order) so contiguous n-grams can be built from them.
-        List<AcceptedToken> accepted = new ArrayList<>();
+        // First pass: normalise and filter each token. Surviving tokens are grouped into
+        // contiguous "segments"; whenever a token is dropped (stopword, number, non-noun, …)
+        // the current segment ends, so phrases never span across a removed word (no fabricated
+        // adjacencies like "president united states" from "president of the united states").
+        List<List<AcceptedToken>> segments = new ArrayList<>();
+        List<AcceptedToken> current = new ArrayList<>();
         for (RawToken token : TextProcessor.tokenize(text)) {
             boolean proper = cap.isEnabled() && TextProcessor.isProperNounCandidate(token);
 
@@ -162,92 +165,100 @@ public class TrendingService {
                 term = TextProcessor.stripPunctuation(term);
             }
             term = term.toLowerCase();
-            if (term.isBlank()) {
-                continue;
-            }
-            if (settings.getPlural().isEnabled()) {
+            boolean dropped = term.isBlank();
+            if (!dropped && settings.getPlural().isEnabled()) {
                 term = TextProcessor.singularize(term);
             }
 
             // Length floor.
-            if (minLen.isEnabled() && term.length() < minLen.getMinLength()) {
-                continue;
+            if (!dropped && minLen.isEnabled() && term.length() < minLen.getMinLength()) {
+                dropped = true;
             }
             // Stopwords.
-            if (settings.getStopwords().isEnabled() && stopwords.contains(term)) {
-                continue;
+            if (!dropped && settings.getStopwords().isEnabled() && stopwords.contains(term)) {
+                dropped = true;
             }
             // Pure-number / date tokens ("250", "31st", "2026").
-            if (settings.getNumeric().isEnabled() && isNumericToken(term)) {
-                continue;
+            if (!dropped && settings.getNumeric().isEnabled() && isNumericToken(term)) {
+                dropped = true;
             }
             // Noun heuristic.
-            if (noun.isEnabled()) {
-                if (term.length() < noun.getMinLength()) {
-                    continue;
-                }
-                if (!proper && !TextProcessor.looksLikeNoun(term)) {
-                    continue;
+            if (!dropped && noun.isEnabled()) {
+                if (term.length() < noun.getMinLength() || (!proper && !TextProcessor.looksLikeNoun(term))) {
+                    dropped = true;
                 }
             }
 
-            accepted.add(new AcceptedToken(term, proper));
+            if (dropped) {
+                // A removed token breaks phrase continuity: close off the current segment.
+                if (!current.isEmpty()) {
+                    segments.add(current);
+                    current = new ArrayList<>();
+                }
+            } else {
+                current.add(new AcceptedToken(term, proper));
+            }
+        }
+        if (!current.isEmpty()) {
+            segments.add(current);
         }
 
-        // Second pass: emit contiguous n-grams. The phrase filter sets the longest n-gram;
-        // the "multi-word only" filter suppresses single-word (1-gram) topics. When multi-word
-        // only is on we always generate phrases (otherwise nothing would be produced).
+        // Second pass: emit contiguous n-grams within each segment. The phrase filter sets the
+        // longest n-gram; the "multi-word only" filter suppresses single-word (1-gram) topics.
+        // When multi-word only is on we always generate phrases (else nothing would be produced).
         boolean multiWordOnly = settings.getMultiWordOnly().isEnabled();
         int maxWords = (settings.getPhrase().isEnabled() || multiWordOnly)
                 ? Math.max(multiWordOnly ? 2 : 1, settings.getPhrase().getMaxWords()) : 1;
         int minWords = multiWordOnly ? 2 : 1;
         boolean countOnce = settings.getCountOncePerArticle().isEnabled();
 
-        for (int i = 0; i < accepted.size(); i++) {
-            StringBuilder phrase = new StringBuilder();
-            boolean allProper = true;
-            int limit = Math.min(maxWords, accepted.size() - i);
-            for (int n = 0; n < limit; n++) {
-                AcceptedToken at = accepted.get(i + n);
-                if (n > 0) {
-                    phrase.append(' ');
-                }
-                phrase.append(at.term);
-                allProper = allProper && at.proper;
+        for (List<AcceptedToken> accepted : segments) {
+            for (int i = 0; i < accepted.size(); i++) {
+                StringBuilder phrase = new StringBuilder();
+                boolean allProper = true;
+                int limit = Math.min(maxWords, accepted.size() - i);
+                for (int n = 0; n < limit; n++) {
+                    AcceptedToken at = accepted.get(i + n);
+                    if (n > 0) {
+                        phrase.append(' ');
+                    }
+                    phrase.append(at.term);
+                    allProper = allProper && at.proper;
 
-                // Skip emitting topics shorter than the minimum (e.g. single words when
-                // "multi-word only" is enabled).
-                if (n + 1 < minWords) {
-                    continue;
-                }
+                    // Skip emitting topics shorter than the minimum (e.g. single words when
+                    // "multi-word only" is enabled).
+                    if (n + 1 < minWords) {
+                        continue;
+                    }
 
-                String key = phrase.toString();
-                // Never surface known boilerplate phrases as topics.
-                if (BLOCKED_PHRASES.contains(key)) {
-                    continue;
-                }
-                double weight = fieldWeight * recencyWeight;
-                if (allProper && cap.isEnabled()) {
-                    weight *= cap.getBoost();
-                }
+                    String key = phrase.toString();
+                    // Never surface known boilerplate phrases as topics.
+                    if (BLOCKED_PHRASES.contains(key)) {
+                        continue;
+                    }
+                    double weight = fieldWeight * recencyWeight;
+                    if (allProper && cap.isEnabled()) {
+                        weight *= cap.getBoost();
+                    }
 
-                Accumulator acc = accumulators.computeIfAbsent(key, k -> new Accumulator());
-                // "mentions"/source breadth always count an article once. By default the
-                // score also only counts a topic once per article; with the toggle off,
-                // repeated mentions within a story each add to the score.
-                boolean firstInArticle = seenInArticle.add(key);
-                if (firstInArticle || !countOnce) {
-                    acc.score += weight;
-                }
-                if (firstInArticle) {
-                    acc.mentions++;
-                    acc.sources.add(article.getSourceName());
-                    acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
-                    if (allProper) {
+                    Accumulator acc = accumulators.computeIfAbsent(key, k -> new Accumulator());
+                    // "mentions"/source breadth always count an article once. By default the
+                    // score also only counts a topic once per article; with the toggle off,
+                    // repeated mentions within a story each add to the score.
+                    boolean firstInArticle = seenInArticle.add(key);
+                    if (firstInArticle || !countOnce) {
+                        acc.score += weight;
+                    }
+                    if (firstInArticle) {
+                        acc.mentions++;
+                        acc.sources.add(article.getSourceName());
+                        acc.articles.put(article.getLink() == null ? article.getTitle() : article.getLink(), article);
+                        if (allProper) {
+                            acc.properMentions++;
+                        }
+                    } else if (allProper && !countOnce) {
                         acc.properMentions++;
                     }
-                } else if (allProper && !countOnce) {
-                    acc.properMentions++;
                 }
             }
         }
