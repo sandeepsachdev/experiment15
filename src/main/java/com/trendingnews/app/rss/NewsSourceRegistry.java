@@ -8,9 +8,9 @@ import java.util.List;
 /**
  * The curated set of worldwide RSS/Atom feeds the app polls.
  *
- * <p>Coverage: Australia (4), Americas (9, incl. 3 Canadian), Europe (10, incl. 6 British)
- * and Asia/Middle East (6). Each source also carries a country code so topics can be
- * required to appear across feeds from multiple countries.
+ * <p>Coverage: Australia (4), Americas (9), Europe (14) and Asia/Middle East (10), spanning
+ * ~18 countries. Each source carries a country so topics can be required to appear across
+ * feeds from multiple countries.
  * Individual feeds occasionally change URLs or go offline; the poller degrades gracefully
  * and simply skips any source it cannot fetch.
  */
@@ -46,6 +46,10 @@ public class NewsSourceRegistry {
             new NewsSource("The Telegraph (UK)", "Europe", "UK", "https://www.telegraph.co.uk/news/rss.xml"),
             new NewsSource("Daily Mail (UK)", "Europe", "UK", "https://www.dailymail.co.uk/articles.rss"),
             new NewsSource("Metro (UK)", "Europe", "UK", "https://metro.co.uk/feed/"),
+            new NewsSource("RTÉ News", "Europe", "Ireland", "https://www.rte.ie/feeds/rss/?index=/news/"),
+            new NewsSource("The Local (Spain)", "Europe", "Spain", "https://www.thelocal.es/feeds/rss.php"),
+            new NewsSource("NL Times", "Europe", "Netherlands", "https://nltimes.nl/rss.xml"),
+            new NewsSource("The Moscow Times", "Europe", "Russia", "https://www.themoscowtimes.com/rss/news"),
 
             // ---------------- Asia / Middle East ----------------
             new NewsSource("Al Jazeera", "Asia", "Qatar", "https://www.aljazeera.com/xml/rss/all.xml"),
@@ -53,7 +57,11 @@ public class NewsSourceRegistry {
             new NewsSource("The Japan Times", "Asia", "Japan", "https://www.japantimes.co.jp/feed/"),
             new NewsSource("South China Morning Post", "Asia", "Hong Kong", "https://www.scmp.com/rss/91/feed"),
             new NewsSource("Channel NewsAsia", "Asia", "Singapore", "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml"),
-            new NewsSource("The Straits Times", "Asia", "Singapore", "https://www.straitstimes.com/news/world/rss.xml")
+            new NewsSource("The Straits Times", "Asia", "Singapore", "https://www.straitstimes.com/news/world/rss.xml"),
+            new NewsSource("The Korea Herald", "Asia", "South Korea", "https://www.koreaherald.com/rss/020000000000.xml"),
+            new NewsSource("The Times of Israel", "Asia", "Israel", "https://www.timesofisrael.com/feed/"),
+            new NewsSource("Gulf News", "Asia", "UAE", "https://gulfnews.com/rss?generatorVersion=1.0"),
+            new NewsSource("Dawn", "Asia", "Pakistan", "https://www.dawn.com/feeds/home")
     );
 
     public List<NewsSource> getSources() {

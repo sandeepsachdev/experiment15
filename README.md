@@ -8,12 +8,13 @@ previewing the effect of every change before committing it.
 
 ## What it does
 
-- **Polls 29 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
-  caching articles in memory:
+- **Polls 37 worldwide RSS/Atom feeds** in parallel on startup and every 15 minutes,
+  caching articles in memory (each tagged with its country so topics can be required to
+  appear across multiple countries):
   - **Australia (4):** ABC News, Sydney Morning Herald, The Guardian AU, SBS News
   - **Americas (9):** CNN, New York Times, NPR, Washington Post, Fox News, USA Today, CBC News (CA), Global News (CA), CTV News (CA)
-  - **Europe (10):** BBC News, The Guardian UK, Deutsche Welle, France 24, Euronews, The Independent, Sky News, The Telegraph (UK), Daily Mail (UK), Metro (UK)
-  - **Asia / Middle East (6):** Al Jazeera, Times of India, The Japan Times, South China Morning Post, Channel NewsAsia, The Straits Times
+  - **Europe (14):** BBC News, The Guardian UK, Deutsche Welle, France 24, Euronews, The Independent, Sky News, The Telegraph (UK), Daily Mail (UK), Metro (UK), RTÉ News (Ireland), The Local (Spain), NL Times (Netherlands), The Moscow Times (Russia)
+  - **Asia / Middle East (10):** Al Jazeera, Times of India, The Japan Times, South China Morning Post, Channel NewsAsia, The Straits Times, The Korea Herald, The Times of Israel, Gulf News (UAE), Dawn (Pakistan)
 - **Top 10 trending topics**, each **clickable** to drill into the source articles
   (headline links straight to the publisher).
 - A **live "Topic Lab"**: every filter has an on/off switch and adjustable parameters.
