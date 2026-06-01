@@ -52,7 +52,9 @@ class TrendingServiceTest {
     }
 
     private static TrendingTopic find(TrendingResult r, String term) {
-        return r.getTopics().stream().filter(t -> t.getTerm().equals(term)).findFirst().orElse(null);
+        // Topics now display their original surface form (preserving capitals/plurals), so
+        // match case-insensitively against the normalised term used in the test corpora.
+        return r.getTopics().stream().filter(t -> t.getTerm().equalsIgnoreCase(term)).findFirst().orElse(null);
     }
 
     private FilterSettings baseSettings() {
@@ -82,6 +84,34 @@ class TrendingServiceTest {
         // dedicated test enables it explicitly.
         s.getMinCountries().setEnabled(false);
         return s;
+    }
+
+    private static TrendingTopic findExact(TrendingResult r, String term) {
+        return r.getTopics().stream().filter(t -> t.getTerm().equals(term)).findFirst().orElse(null);
+    }
+
+    @Test
+    void displaysOriginalSurfaceFormDespiteNormalisation() {
+        // Capitalisation, plural and punctuation are all normalised for matching, but the
+        // displayed topic should keep the original surface form.
+        List<Article> corpus = List.of(
+                article("CNN", "Tech Giants face scrutiny"),
+                article("BBC", "Tech Giants face scrutiny"),
+                article("NPR", "Tech Giants face scrutiny"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(2);
+        s.getMultiWordOnly().setEnabled(true);
+        s.getPlural().setEnabled(true);       // "giants" -> "giant" for matching
+        s.getStopwords().setEnabled(true);
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+
+        // The displayed term keeps capitals and the plural, not the normalised "tech giant".
+        assertNotNull(findExact(r, "Tech Giants"),
+                "should display the original surface form 'Tech Giants'");
+        assertNull(findExact(r, "tech giant"), "should not display the normalised form");
     }
 
     @Test

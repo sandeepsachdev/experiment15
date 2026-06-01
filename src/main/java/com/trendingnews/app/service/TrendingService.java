@@ -166,6 +166,9 @@ public class TrendingService {
         for (RawToken token : TextProcessor.tokenize(text)) {
             boolean proper = cap.isEnabled() && TextProcessor.isProperNounCandidate(token);
 
+            // Surface form shown to the user: the original word with its capitals, plural and
+            // punctuation, regardless of which filters normalise it for matching below.
+            String surface = token.raw();
             String term = token.raw();
             if (settings.getPunctuation().isEnabled()) {
                 term = TextProcessor.stripPunctuation(term);
@@ -202,7 +205,7 @@ public class TrendingService {
                     current = new ArrayList<>();
                 }
             } else {
-                current.add(new AcceptedToken(term, proper));
+                current.add(new AcceptedToken(term, surface, proper));
             }
         }
         if (!current.isEmpty()) {
@@ -221,14 +224,17 @@ public class TrendingService {
         for (List<AcceptedToken> accepted : segments) {
             for (int i = 0; i < accepted.size(); i++) {
                 StringBuilder phrase = new StringBuilder();
+                StringBuilder surfacePhrase = new StringBuilder();
                 boolean allProper = true;
                 int limit = Math.min(maxWords, accepted.size() - i);
                 for (int n = 0; n < limit; n++) {
                     AcceptedToken at = accepted.get(i + n);
                     if (n > 0) {
                         phrase.append(' ');
+                        surfacePhrase.append(' ');
                     }
                     phrase.append(at.term);
+                    surfacePhrase.append(at.surface());
                     allProper = allProper && at.proper;
 
                     // Skip emitting topics shorter than the minimum (e.g. single words when
@@ -238,8 +244,11 @@ public class TrendingService {
                     }
 
                     String key = phrase.toString();
-                    // Never surface known boilerplate phrases as topics.
-                    if (BLOCKED_PHRASES.contains(key)) {
+                    // Never surface known boilerplate phrases as topics. Check both the
+                    // normalised key and the lower-cased surface form, so a phrase is blocked
+                    // regardless of whether normalisation (e.g. plural collapsing) altered it.
+                    if (BLOCKED_PHRASES.contains(key)
+                            || BLOCKED_PHRASES.contains(surfacePhrase.toString().toLowerCase())) {
                         continue;
                     }
                     double weight = fieldWeight * recencyWeight;
@@ -248,6 +257,7 @@ public class TrendingService {
                     }
 
                     Accumulator acc = accumulators.computeIfAbsent(key, k -> new Accumulator());
+                    acc.addDisplayForm(surfacePhrase.toString());
                     // "mentions"/source breadth always count an article once. By default the
                     // score also only counts a topic once per article; with the toggle off,
                     // repeated mentions within a story each add to the score.
@@ -490,8 +500,10 @@ public class TrendingService {
         for (int i = 0; i < Math.min(limit, entries.size()); i++) {
             Map.Entry<String, Accumulator> e = entries.get(i);
             Accumulator acc = e.getValue();
+            // Display the most common original surface form (with capitals/plurals/punctuation),
+            // falling back to the normalised key if none was recorded.
             topics.add(new TrendingTopic(
-                    e.getKey(),
+                    acc.bestDisplayForm(e.getKey()),
                     round(acc.score),
                     acc.mentions,
                     acc.sources.size(),
@@ -653,8 +665,15 @@ public class TrendingService {
         return Math.round(v * 100.0) / 100.0;
     }
 
-    /** A token that survived filtering, ready to be combined into n-grams. */
-    private record AcceptedToken(String term, boolean proper) {
+    /**
+     * A token that survived filtering, ready to be combined into n-grams.
+     *
+     * @param term    the normalised form used for matching/grouping (lower-cased, punctuation
+     *                stripped, singularised — depending on which filters are on)
+     * @param surface the original form as it appeared in the article, preserving capitals,
+     *                plurals and punctuation for display
+     */
+    private record AcceptedToken(String term, String surface, boolean proper) {
     }
 
     /** Mutable per-term tally used while scanning the corpus. */
@@ -665,6 +684,25 @@ public class TrendingService {
         final Set<String> sources = new HashSet<>();
         final Set<String> countries = new HashSet<>();
         final Map<String, Article> articles = new LinkedHashMap<>();
+        /** How often each original surface form was seen, so we can display the common one. */
+        final Map<String, Integer> displayForms = new LinkedHashMap<>();
+
+        void addDisplayForm(String surface) {
+            displayForms.merge(surface, 1, Integer::sum);
+        }
+
+        /** The most frequently seen surface form (ties: first seen), or {@code fallback}. */
+        String bestDisplayForm(String fallback) {
+            String best = null;
+            int bestCount = 0;
+            for (Map.Entry<String, Integer> e : displayForms.entrySet()) {
+                if (e.getValue() > bestCount) {
+                    best = e.getKey();
+                    bestCount = e.getValue();
+                }
+            }
+            return best == null ? fallback : best;
+        }
 
         /**
          * Merge another phrase's tally into this one by UNION (used by both phrase rollup and
@@ -672,6 +710,9 @@ public class TrendingService {
          * keeper, scores are NOT summed (that would double-count the shared coverage); the
          * keeper's score is retained and articles/sources are unioned so mentions/source
          * breadth reflect the combined, de-duplicated set.
+         *
+         * <p>Display forms are NOT merged: the absorbed phrase has a different word count, so
+         * its surface forms would not represent this (longer/keeper) phrase.
          */
         void absorbOverlap(Accumulator other) {
             this.score = Math.max(this.score, other.score);
