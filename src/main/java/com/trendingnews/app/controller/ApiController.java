@@ -61,6 +61,13 @@ public class ApiController {
         return FilterSettings.withDefaults();
     }
 
+    @GetMapping("/blocked-phrases")
+    public Map<String, Object> blockedPhrases() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("phrases", trendingService.getDefaultBlockedPhrases());
+        return out;
+    }
+
     @GetMapping("/sources")
     public Map<String, Object> sources() {
         Map<String, List<String>> byRegion = new LinkedHashMap<>();

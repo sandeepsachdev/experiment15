@@ -22,6 +22,11 @@ const FILTERS = [
         params: [{ kind: 'stopwords' }]
     },
     {
+        key: 'blockedPhrases', label: 'Excluded phrases',
+        desc: 'Never show these phrases as topics. One phrase per line; editable.',
+        params: [{ kind: 'blockedPhrases' }]
+    },
+    {
         key: 'punctuation', label: 'Ignore punctuation',
         desc: 'Strip punctuation so "covid," and "covid" count as one term.',
         params: []
@@ -137,6 +142,7 @@ let previewInFlight = null; // promise for the current /api/trending fetch, or n
 let previewRerunQueued = false; // a newer recompute was requested while one was in flight
 let previewDirty = false;   // true when previewSettings changed but the panel hasn't refetched
 let ALL_REGIONS = ['Australia', 'Americas', 'Europe', 'Asia']; // overwritten from /api/sources
+let DEFAULT_BLOCKED_PHRASES = []; // loaded from /api/blocked-phrases
 
 const $ = (id) => document.getElementById(id);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -148,6 +154,9 @@ async function boot() {
     defaultSettings = await fetchJson('/api/defaults');
     const stop = await fetchJson('/api/stopwords');
     defaultSettings.stopwords.words = stop.words || [];
+    const blocked = await fetchJson('/api/blocked-phrases');
+    DEFAULT_BLOCKED_PHRASES = blocked.phrases || [];
+    defaultSettings.blockedPhrases.phrases = DEFAULT_BLOCKED_PHRASES.slice();
 
     appliedSettings = clone(defaultSettings);
     previewSettings = clone(defaultSettings);
@@ -267,6 +276,32 @@ function buildParam(filterKey, p) {
         }, 0);
         return div;
     }
+    if (p.kind === 'blockedPhrases') {
+        const div = document.createElement('div');
+        div.className = 'param';
+        div.innerHTML =
+            `<label>Excluded phrases <span class="val" id="blockedCount"></span></label>` +
+            `<textarea id="blockedBox" spellcheck="false" placeholder="one phrase per line"></textarea>` +
+            `<div class="stopword-actions">` +
+            `<button class="ghost-btn" id="resetBlocked">Reset list</button></div>`;
+        setTimeout(() => {
+            const box = $('blockedBox');
+            box.value = (previewSettings.blockedPhrases.phrases || []).join('\n');
+            updateBlockedCount();
+            box.addEventListener('input', () => {
+                previewSettings.blockedPhrases.phrases = parsePhrases(box.value);
+                updateBlockedCount();
+                onSettingsChanged();
+            });
+            $('resetBlocked').addEventListener('click', () => {
+                previewSettings.blockedPhrases.phrases = DEFAULT_BLOCKED_PHRASES.slice();
+                box.value = DEFAULT_BLOCKED_PHRASES.join('\n');
+                updateBlockedCount();
+                onSettingsChanged();
+            });
+        }, 0);
+        return div;
+    }
     if (p.kind === 'regions') {
         const div = document.createElement('div');
         div.className = 'param';
@@ -295,6 +330,16 @@ function parseWords(text) {
 function updateStopwordCount() {
     const el = $('stopwordCount');
     if (el) el.textContent = (previewSettings.stopwords.words || []).length + ' words';
+}
+
+// One phrase per line; lower-cased, blanks dropped.
+function parsePhrases(text) {
+    return text.split('\n').map((p) => p.trim().toLowerCase()).filter(Boolean);
+}
+
+function updateBlockedCount() {
+    const el = $('blockedCount');
+    if (el) el.textContent = (previewSettings.blockedPhrases.phrases || []).length + ' phrases';
 }
 
 function fmt(v) {

@@ -17,6 +17,9 @@ public class FilterSettings {
     /** Remove common, low-signal words ("a", "the", "is", ...). The list is editable. */
     private StopwordFilter stopwords = new StopwordFilter();
 
+    /** Never surface these multi-word phrases as topics. The list is editable. */
+    private BlockedPhrasesFilter blockedPhrases = new BlockedPhrasesFilter();
+
     /** Strip punctuation from tokens so "covid," and "covid" are counted together. */
     private PunctuationFilter punctuation = new PunctuationFilter();
 
@@ -94,6 +97,14 @@ public class FilterSettings {
 
     public void setStopwords(StopwordFilter stopwords) {
         this.stopwords = stopwords;
+    }
+
+    public BlockedPhrasesFilter getBlockedPhrases() {
+        return blockedPhrases;
+    }
+
+    public void setBlockedPhrases(BlockedPhrasesFilter blockedPhrases) {
+        this.blockedPhrases = blockedPhrases;
     }
 
     public PunctuationFilter getPunctuation() {
@@ -269,6 +280,31 @@ public class FilterSettings {
 
         public void setWords(List<String> words) {
             this.words = words;
+        }
+    }
+
+    /**
+     * Phrases that must never surface as topics. When {@code phrases} is null the server's
+     * default list is used; otherwise this list replaces it. Compared case-insensitively.
+     */
+    public static class BlockedPhrasesFilter {
+        private boolean enabled = true;
+        private List<String> phrases;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public List<String> getPhrases() {
+            return phrases;
+        }
+
+        public void setPhrases(List<String> phrases) {
+            this.phrases = phrases;
         }
     }
 

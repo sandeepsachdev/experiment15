@@ -274,6 +274,40 @@ class TrendingServiceTest {
 
         assertNull(find(r, "latest news bulletin"),
                 "the boilerplate phrase 'latest news bulletin' must never surface");
+        // The newly added default phrases are also blocked.
+        assertTrue(TrendingService.DEFAULT_BLOCKED_PHRASES.contains("court order"));
+        assertTrue(TrendingService.DEFAULT_BLOCKED_PHRASES.contains("first time since"));
+        assertTrue(TrendingService.DEFAULT_BLOCKED_PHRASES.contains("social media"));
+    }
+
+    @Test
+    void blockedPhrasesListIsEditable() {
+        List<Article> corpus = List.of(
+                article("CNN", "social media giants under fire"),
+                article("BBC", "social media giants under fire"),
+                article("NPR", "social media giants under fire"));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(2);
+        s.getStopwords().setEnabled(false);
+        s.getMultiWordOnly().setEnabled(false);
+
+        TrendingService service = new TrendingService(cacheOf(corpus), new StopwordService());
+
+        // Default list excludes "social media".
+        assertNull(find(service.compute(s), "social media"), "default list should block 'social media'");
+
+        // A custom list that omits it lets it through, but blocks a custom phrase instead.
+        s.getBlockedPhrases().setPhrases(List.of("under fire"));
+        TrendingResult r = service.compute(s);
+        assertNotNull(find(r, "social media"), "custom list no longer blocks 'social media'");
+        assertNull(find(r, "under fire"), "custom blocked phrase should be excluded");
+
+        // Disabling the filter blocks nothing.
+        s.getBlockedPhrases().setPhrases(null);
+        s.getBlockedPhrases().setEnabled(false);
+        assertNotNull(find(service.compute(s), "social media"), "disabled filter blocks nothing");
     }
 
     @Test

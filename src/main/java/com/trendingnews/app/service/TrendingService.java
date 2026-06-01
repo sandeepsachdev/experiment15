@@ -41,8 +41,8 @@ public class TrendingService {
      * Multi-word feed boilerplate that should never surface as a trending topic, regardless
      * of how often it appears. Compared case-insensitively against generated phrases.
      */
-    private static final Set<String> BLOCKED_PHRASES = Set.of(
-            "latest news bulletin");
+    static final List<String> DEFAULT_BLOCKED_PHRASES = List.of(
+            "latest news bulletin", "court order", "first time since", "social media");
 
     /**
      * Lower-case keywords that mark an article as sport. Matched as whole words against the
@@ -95,6 +95,7 @@ public class TrendingService {
         }
         List<Article> all = cache.getArticles();
         Set<String> stopwords = resolveStopwords(settings);
+        Set<String> blockedPhrases = resolveBlockedPhrases(settings);
         Set<String> allowedRegions = resolveAllowedRegions(settings);
         Instant now = Instant.now();
 
@@ -132,9 +133,9 @@ public class TrendingService {
             // De-duplicate terms within a single article so one story can't spam a term's count.
             Set<String> seenInArticle = new HashSet<>();
             processField(article.getTitle(), titleWeight, recencyWeight,
-                    article, settings, stopwords, accumulators, seenInArticle);
+                    article, settings, stopwords, blockedPhrases, accumulators, seenInArticle);
             processField(article.getDescription(), contentWeight, recencyWeight,
-                    article, settings, stopwords, accumulators, seenInArticle);
+                    article, settings, stopwords, blockedPhrases, accumulators, seenInArticle);
         }
 
         Set<String> absorbed = new HashSet<>(applyPhraseRollup(accumulators, settings));
@@ -152,6 +153,7 @@ public class TrendingService {
 
     private void processField(String text, double fieldWeight, double recencyWeight,
                               Article article, FilterSettings settings, Set<String> stopwords,
+                              Set<String> blockedPhrases,
                               Map<String, Accumulator> accumulators, Set<String> seenInArticle) {
         FilterSettings.CapitalisationFilter cap = settings.getCapitalisation();
         FilterSettings.NounFilter noun = settings.getNoun();
@@ -244,11 +246,12 @@ public class TrendingService {
                     }
 
                     String key = phrase.toString();
-                    // Never surface known boilerplate phrases as topics. Check both the
-                    // normalised key and the lower-cased surface form, so a phrase is blocked
-                    // regardless of whether normalisation (e.g. plural collapsing) altered it.
-                    if (BLOCKED_PHRASES.contains(key)
-                            || BLOCKED_PHRASES.contains(surfacePhrase.toString().toLowerCase())) {
+                    // Never surface blocked phrases as topics. Check both the normalised key and
+                    // the lower-cased surface form, so a phrase is blocked regardless of whether
+                    // normalisation (e.g. plural collapsing) altered it.
+                    if (!blockedPhrases.isEmpty()
+                            && (blockedPhrases.contains(key)
+                                || blockedPhrases.contains(surfacePhrase.toString().toLowerCase()))) {
                         continue;
                     }
                     double weight = fieldWeight * recencyWeight;
@@ -659,6 +662,30 @@ public class TrendingService {
             return set;
         }
         return new HashSet<>(stopwordService.getWords());
+    }
+
+    /**
+     * Resolves the active blocked-phrase set: empty when the filter is off, the request's
+     * override list when supplied, otherwise the server defaults. Phrases are lower-cased.
+     */
+    private Set<String> resolveBlockedPhrases(FilterSettings settings) {
+        FilterSettings.BlockedPhrasesFilter filter = settings.getBlockedPhrases();
+        if (!filter.isEnabled()) {
+            return Set.of();
+        }
+        List<String> source = filter.getPhrases() != null ? filter.getPhrases() : DEFAULT_BLOCKED_PHRASES;
+        Set<String> set = new HashSet<>();
+        for (String p : source) {
+            if (p != null && !p.isBlank()) {
+                set.add(p.trim().toLowerCase());
+            }
+        }
+        return set;
+    }
+
+    /** The built-in default blocked-phrase list, for the UI to initialise from. */
+    public List<String> getDefaultBlockedPhrases() {
+        return DEFAULT_BLOCKED_PHRASES;
     }
 
     private double round(double v) {
