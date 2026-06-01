@@ -582,7 +582,7 @@ public class FilterSettings {
     }
 
     public static class PhraseRollupFilter {
-        private boolean enabled = false;
+        private boolean enabled = true;
         /**
          * A shorter phrase is only rolled up into a longer one if that longer phrase was
          * itself mentioned in at least this many articles (guards against absorbing strong

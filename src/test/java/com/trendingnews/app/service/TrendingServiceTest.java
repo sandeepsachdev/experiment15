@@ -96,6 +96,7 @@ class TrendingServiceTest {
         s.getPhrase().setEnabled(true);
         s.getPhrase().setMaxWords(3);
         s.getMultiWordOnly().setEnabled(false);
+        s.getPhraseRollup().setEnabled(false); // isolate continuity from rollup
         s.getPlural().setEnabled(false); // keep "states" intact for clear assertions
         s.getStopwords().setEnabled(true); // remove "of"/"the"
 
