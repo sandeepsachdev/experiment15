@@ -32,7 +32,9 @@ import java.util.TreeMap;
 @Service
 public class TrendingService {
 
-    private static final int TOP_N = 20;
+    /** Allowed range for the configurable number of topics returned. */
+    private static final int MIN_TOP_N = 5;
+    private static final int MAX_TOP_N = 50;
     private static final int MAX_ARTICLES_PER_TOPIC = 8;
 
     /**
@@ -484,7 +486,8 @@ public class TrendingService {
         entries.sort(Comparator.<Map.Entry<String, Accumulator>>comparingDouble(e -> e.getValue().score).reversed());
 
         List<TrendingTopic> topics = new ArrayList<>();
-        for (int i = 0; i < Math.min(TOP_N, entries.size()); i++) {
+        int limit = Math.max(MIN_TOP_N, Math.min(MAX_TOP_N, settings.getTopN()));
+        for (int i = 0; i < Math.min(limit, entries.size()); i++) {
             Map.Entry<String, Accumulator> e = entries.get(i);
             Accumulator acc = e.getValue();
             topics.add(new TrendingTopic(

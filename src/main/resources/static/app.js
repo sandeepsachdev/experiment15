@@ -176,6 +176,7 @@ async function fetchJson(url, opts) {
 // Build the control panel from FILTERS + previewSettings
 // ----------------------------------------------------------------------------
 function buildControls() {
+    syncTopN();
     const root = $('filterControls');
     root.innerHTML = '';
 
@@ -488,7 +489,22 @@ async function loadSources() {
 // ----------------------------------------------------------------------------
 // Global buttons / stopwords
 // ----------------------------------------------------------------------------
+// Reflect previewSettings.topN onto the slider + label (called on build/reset/revert).
+function syncTopN() {
+    const range = $('topNRange');
+    if (!range) return;
+    const v = previewSettings.topN || 20;
+    range.value = v;
+    $('topNVal').textContent = v;
+}
+
 function bindGlobalButtons() {
+    $('topNRange').addEventListener('input', () => {
+        const v = parseInt($('topNRange').value, 10);
+        previewSettings.topN = v;
+        $('topNVal').textContent = v;
+        onSettingsChanged();
+    });
     $('applyBtn').addEventListener('click', commitPreview);
     $('revertBtn').addEventListener('click', revertPreview);
     $('resetBtn').addEventListener('click', () => {

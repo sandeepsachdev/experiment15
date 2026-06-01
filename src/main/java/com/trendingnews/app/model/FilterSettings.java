@@ -11,6 +11,9 @@ import java.util.List;
  */
 public class FilterSettings {
 
+    /** Number of trending topics to return (clamped to 5..50 by the service). */
+    private int topN = 20;
+
     /** Remove common, low-signal words ("a", "the", "is", ...). The list is editable. */
     private StopwordFilter stopwords = new StopwordFilter();
 
@@ -76,6 +79,14 @@ public class FilterSettings {
     }
 
     // ----- getters / setters -----
+
+    public int getTopN() {
+        return topN;
+    }
+
+    public void setTopN(int topN) {
+        this.topN = topN;
+    }
 
     public StopwordFilter getStopwords() {
         return stopwords;
