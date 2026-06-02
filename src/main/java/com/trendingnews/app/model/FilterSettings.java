@@ -534,7 +534,7 @@ public class FilterSettings {
     public static class PhraseFilter {
         private boolean enabled = true;
         /** Longest phrase (in words) to generate. 1 = single words only. */
-        private int maxWords = 3;
+        private int maxWords = 5;
 
         public boolean isEnabled() {
             return enabled;
