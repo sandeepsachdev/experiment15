@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * The curated set of worldwide RSS/Atom feeds the app polls.
  *
- * <p>Coverage: Australia (4), Americas (9), Europe (14) and Asia/Middle East (10), spanning
+ * <p>Coverage: Australia (4), Americas (9), Europe (13) and Asia/Middle East (10), spanning
  * ~18 countries. Each source carries a country so topics can be required to appear across
  * feeds from multiple countries.
  * Individual feeds occasionally change URLs or go offline; the poller degrades gracefully
@@ -44,7 +44,6 @@ public class NewsSourceRegistry {
             new NewsSource("The Independent", "Europe", "UK", "https://www.independent.co.uk/news/rss"),
             new NewsSource("Sky News", "Europe", "UK", "https://feeds.skynews.com/feeds/rss/world.xml"),
             new NewsSource("The Telegraph (UK)", "Europe", "UK", "https://www.telegraph.co.uk/news/rss.xml"),
-            new NewsSource("Daily Mail (UK)", "Europe", "UK", "https://www.dailymail.co.uk/articles.rss"),
             new NewsSource("Metro (UK)", "Europe", "UK", "https://metro.co.uk/feed/"),
             new NewsSource("RTÉ News", "Europe", "Ireland", "https://www.rte.ie/feeds/rss/?index=/news/"),
             new NewsSource("The Local (Spain)", "Europe", "Spain", "https://www.thelocal.es/feeds/rss.php"),
