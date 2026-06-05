@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -519,5 +520,32 @@ class TrendingServiceTest {
         // Disabling the filter (or selecting no regions) includes everything again.
         s.getRegion().setEnabled(false);
         assertEquals(3, new TrendingService(cacheOf(corpus), new StopwordService()).compute(s).getArticlesConsidered());
+    }
+
+    @Test
+    void articleRefIncludesTheSentenceContainingTheTopic() {
+        // Two sentences; the topic "donald trump" appears in the second one.
+        String text = "Markets fell sharply today. Donald Trump addressed the crowd in Texas.";
+        List<Article> corpus = List.of(
+                article("CNN", text),
+                article("BBC", text),
+                article("NPR", text));
+
+        FilterSettings s = baseSettings();
+        s.getPhrase().setEnabled(true);
+        s.getPhrase().setMaxWords(2);
+        s.getMultiWordOnly().setEnabled(true);
+
+        TrendingResult r = new TrendingService(cacheOf(corpus), new StopwordService()).compute(s);
+        TrendingTopic topic = find(r, "donald trump");
+        assertNotNull(topic);
+        assertTrue(topic.getArticles().size() > 0);
+
+        String sentence = topic.getArticles().get(0).getSentence();
+        assertNotNull(sentence, "the matched sentence should be returned");
+        assertTrue(sentence.contains("Donald Trump addressed the crowd"),
+                "should return the sentence containing the topic, got: " + sentence);
+        assertFalse(sentence.contains("Markets fell"),
+                "should not return the unrelated sentence");
     }
 }

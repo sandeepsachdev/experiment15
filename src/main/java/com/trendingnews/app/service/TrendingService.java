@@ -510,16 +510,18 @@ public class TrendingService {
                     round(acc.score),
                     acc.mentions,
                     acc.sources.size(),
-                    toArticleRefs(acc)));
+                    toArticleRefs(acc, e.getKey())));
         }
         return topics;
     }
 
-    private List<TrendingTopic.ArticleRef> toArticleRefs(Accumulator acc) {
+    private List<TrendingTopic.ArticleRef> toArticleRefs(Accumulator acc, String termKey) {
         List<Article> articles = new ArrayList<>(acc.articles.values());
         articles.sort(Comparator.comparing(
                 Article::getPublishedAt,
                 Comparator.nullsLast(Comparator.reverseOrder())));
+        // Normalised words of the topic, used to locate the sentence it appeared in.
+        String[] termWords = termKey.split(" ");
         List<TrendingTopic.ArticleRef> refs = new ArrayList<>();
         for (int i = 0; i < Math.min(MAX_ARTICLES_PER_TOPIC, articles.size()); i++) {
             Article a = articles.get(i);
@@ -528,9 +530,61 @@ public class TrendingService {
                     a.getLink(),
                     a.getSourceName(),
                     a.getRegion(),
-                    a.getPublishedAt() == null ? null : a.getPublishedAt().toString()));
+                    a.getPublishedAt() == null ? null : a.getPublishedAt().toString(),
+                    findSentence(a, termWords)));
         }
         return refs;
+    }
+
+    /**
+     * Finds the sentence in the article (title preferred, then description) that contains the
+     * topic's words. Matching is done on a normalised, lower-cased view (punctuation removed,
+     * plurals collapsed) so it lines up with how the topic key was built, but the original
+     * sentence text is returned for display. Returns {@code null} if no sentence matches.
+     */
+    private String findSentence(Article article, String[] termWords) {
+        String fromTitle = matchSentence(article.getTitle(), termWords);
+        if (fromTitle != null) {
+            return fromTitle;
+        }
+        return matchSentence(article.getDescription(), termWords);
+    }
+
+    private String matchSentence(String text, String[] termWords) {
+        if (text == null || text.isBlank() || termWords.length == 0) {
+            return null;
+        }
+        for (String sentence : text.split("(?<=[.!?])\\s+")) {
+            if (sentenceContainsTerm(sentence, termWords)) {
+                String trimmed = sentence.trim();
+                return trimmed.isEmpty() ? null : trimmed;
+            }
+        }
+        return null;
+    }
+
+    /** True when the sentence contains the topic's words as a contiguous, normalised run. */
+    private boolean sentenceContainsTerm(String sentence, String[] termWords) {
+        List<String> norm = new ArrayList<>();
+        for (String raw : sentence.trim().split("\\s+")) {
+            String w = TextProcessor.singularize(TextProcessor.stripPunctuation(raw).toLowerCase());
+            if (!w.isBlank()) {
+                norm.add(w);
+            }
+        }
+        for (int i = 0; i + termWords.length <= norm.size(); i++) {
+            boolean match = true;
+            for (int j = 0; j < termWords.length; j++) {
+                if (!norm.get(i + j).equals(termWords[j])) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True when the article's title or description matches any sport keyword (whole word). */

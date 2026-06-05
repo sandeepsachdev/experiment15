@@ -51,13 +51,16 @@ public class TrendingTopic {
         private final String sourceName;
         private final String region;
         private final String publishedAt;
+        private final String sentence;
 
-        public ArticleRef(String title, String link, String sourceName, String region, String publishedAt) {
+        public ArticleRef(String title, String link, String sourceName, String region,
+                          String publishedAt, String sentence) {
             this.title = title;
             this.link = link;
             this.sourceName = sourceName;
             this.region = region;
             this.publishedAt = publishedAt;
+            this.sentence = sentence;
         }
 
         public String getTitle() {
@@ -78,6 +81,11 @@ public class TrendingTopic {
 
         public String getPublishedAt() {
             return publishedAt;
+        }
+
+        /** The sentence in the article where the topic appeared (may be null). */
+        public String getSentence() {
+            return sentence;
         }
     }
 }

@@ -492,10 +492,14 @@ function openArticles(topic) {
     topic.articles.forEach((a) => {
         const li = document.createElement('li');
         const when = a.publishedAt ? timeAgo(a.publishedAt) : '';
+        const sentence = a.sentence
+            ? `<div class="sentence">…${highlightTerm(a.sentence, topic.term)}…</div>`
+            : '';
         li.innerHTML =
             `<a href="${a.link}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a>` +
             `<div class="src">${escapeHtml(a.sourceName)} · ` +
-            `<span class="region">${escapeHtml(a.region || '')}</span> ${when ? '· ' + when : ''}</div>`;
+            `<span class="region">${escapeHtml(a.region || '')}</span> ${when ? '· ' + when : ''}</div>` +
+            sentence;
         ul.appendChild(li);
     });
     $('articleDialog').showModal();
@@ -613,6 +617,16 @@ function flash(btn, text) {
 function escapeHtml(s) {
     return (s || '').replace(/[&<>"']/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Escape the sentence, then bold the first word of the term wherever it appears (the term
+// may be normalised, so highlight on the leading word for a robust, case-insensitive match).
+function highlightTerm(sentence, term) {
+    const safe = escapeHtml(sentence);
+    const firstWord = (term || '').split(' ')[0];
+    if (!firstWord) return safe;
+    const re = new RegExp('(' + firstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+    return safe.replace(re, '<mark>$1</mark>');
 }
 
 function timeAgo(iso) {
